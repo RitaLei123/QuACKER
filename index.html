@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RPI Course Ranker</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Set Inter font -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for a cleaner look in dark mode */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937; /* gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563; /* gray-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* gray-500 */
+        }
+    </style>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+</head>
+<body class="bg-gray-900 text-gray-200 font-inter p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-red-400">
+                RPI Course Ranker
+            </h1>
+            <p class="text-center text-gray-400 mt-2">Rate your courses and see how they stack up!</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Left Column: Leaderboard -->
+            <div class="lg:col-span-1 bg-gray-800 p-6 rounded-xl shadow-2xl">
+                <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2 text-white">
+                    Top Rated Courses
+                </h2>
+                <ol id="leaderboard-list" class="space-y-3">
+                    <!-- Leaderboard items will be injected here by JavaScript -->
+                </ol>
+            </div>
+
+            <!-- Right Column: All Courses & Search -->
+            <div class="lg:col-span-2 bg-gray-800 p-6 rounded-xl shadow-2xl">
+                <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2 text-white">
+                    All Courses
+                </h2>
+                <input 
+                    type="text" 
+                    id="search-bar" 
+                    placeholder="Search by name, subject, or course #" 
+                    class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg mb-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                <div id="all-courses-list" class="max-h-[65vh] overflow-y-auto space-y-3 pr-2">
+                    <!-- Course list will be injected here by JavaScript -->
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // --- DATA ---
+        // This array will hold our processed course objects and their scores
+        let courses = [];
+
+        // --- CORE LOGIC ---
+
+        /**
+         * Calculates difficulty based on user's rules.
+         * @param {string} crse - The course number (e.g., "1100", "4210").
+         * @param {string} name - The course name.
+         * @returns {number} The difficulty score (1-5).
+         */
+        function getDifficulty(crse, name) {
+            const level = parseInt(crse, 10);
+            const nameLower = name.toLowerCase();
+
+            // 1000 level = 1 difficulty
+            if (level >= 1000 && level < 2000) {
+                return 1;
+            }
+            
+            // 2000 level with intro in the name = 2 difficulty
+            if (level >= 2000 && level < 3000) {
+                return nameLower.includes('intro') ? 2 : 3; // 2000 level without intro = 3
+            }
+            
+            // 3000 level without intro in name = 3 difficulty
+            if (level >= 3000 && level < 4000) {
+                if (nameLower.includes('intro')) {
+                    return 2; // Assumption: 3000-level intro is like a 2000-level intro
+                } else {
+                    return 3; // 3000 level without intro
+                }
+            }
+
+            // 4000 level with intro in the name is 4 difficulty
+            // 4000 level or more without intro in the name = 5 difficulty
+            if (level >= 4000) {
+                return nameLower.includes('intro') ? 4 : 5;
+            }
+            
+            return 0; // Default for 0001-level courses
+        }
+
+        /**
+         * Gets the appropriate color class for a difficulty level.
+         * @param {number} difficulty - The difficulty score.
+         * @returns {string} Tailwind CSS background color class.
+         */
+        function getDifficultyColor(difficulty) {
+            switch (difficulty) {
+                case 1: return 'bg-green-600';
+                case 2: return 'bg-blue-600';
+                case 3: return 'bg-yellow-600';
+                case 4: return 'bg-orange-600';
+                case 5: return 'bg-red-600';
+                default: return 'bg-gray-600';
+            }
+        }
+
+        /**
+         * Renders the entire list of courses on the right side.
+         * @param {string} [filterText=""] - Optional text to filter the course list.
+         */
+        function renderAllCourses(filterText = "") {
+            const listElement = document.getElementById('all-courses-list');
+            if (!listElement) return;
+
+            const lowerFilter = filterText.toLowerCase();
+            
+            // Filter courses based on search text
+            const filteredCourses = courses.filter(course => {
+                return (
+                    course.name.toLowerCase().includes(lowerFilter) ||
+                    course.id.toLowerCase().includes(lowerFilter) ||
+                    course.subj.toLowerCase().includes(lowerFilter)
+                );
+            });
+
+            // Sort filtered courses alphabetically by subject, then course number
+            filteredCourses.sort((a, b) => {
+                if (a.subj < b.subj) return -1;
+                if (a.subj > b.subj) return 1;
+                return a.crse.localeCompare(b.crse);
+            });
+
+            // Generate HTML
+            listElement.innerHTML = filteredCourses.map(course => `
+                <div class="flex justify-between items-center bg-gray-700/50 p-4 rounded-lg">
+                    <div class="flex-grow pr-4">
+                        <span class="font-semibold text-white block">${course.name}</span>
+                        <span class="text-sm text-gray-400">${course.id}</span>
+                        <span class="${getDifficultyColor(course.difficulty)} text-white text-xs px-2 py-0.5 rounded-full ml-2">
+                            Diff: ${course.difficulty}
+                        </span>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <label for="score-${course.id}" class="text-sm text-gray-300 mr-2">Score:</label>
+                        <input 
+                            type="number" 
+                            id="score-${course.id}"
+                            data-id="${course.id}"
+                            class="score-input w-20 bg-gray-800 border border-gray-600 rounded-md text-center p-2 text-white" 
+                            min="0" 
+                            max="5" 
+                            step="0.1"
+                            value="${course.userScore.toFixed(1)}"
+                        >
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        /**
+         * Renders the top 10 courses on the leaderboard.
+         */
+        function renderLeaderboard() {
+            const listElement = document.getElementById('leaderboard-list');
+            if (!listElement) return;
+
+            // Create a sorted copy of the courses array
+            const sortedCourses = [...courses]
+                .sort((a, b) => b.userScore - a.userScore)
+                .slice(0, 10);
+
+            // Generate HTML
+            listElement.innerHTML = sortedCourses.map((course, index) => `
+                <li class="flex justify-between items-center bg-gray-700/50 p-3 rounded-lg transition-all hover:bg-gray-700">
+                    <div class="flex items-center">
+                        <span class="text-2xl font-bold text-red-400 mr-4 w-8 text-center">${index + 1}</span>
+                        <div class="flex-grow">
+                            <span class="font-semibold text-white block">${course.name}</span>
+                            <span class="text-sm text-gray-400">${course.id} | Diff: ${course.difficulty}</span>
+                        </div>
+                    </div>
+                    <span class="text-xl font-bold text-green-400">${course.userScore.toFixed(1)}</span>
+                </li>
+            `).join('');
+        }
+
+        /**
+         * Handles the score input change event using event delegation.
+         * @param {Event} event - The DOM event object.
+         */
+        function handleScoreChange(event) {
+            if (event.target.classList.contains('score-input')) {
+                const id = event.target.dataset.id;
+                let newScore = parseFloat(event.target.value);
+
+                // Validate and clamp score
+                if (isNaN(newScore)) newScore = 0;
+                if (newScore > 5) newScore = 5;
+                if (newScore < 0) newScore = 0;
+
+                // Update the score in our main courses array
+                const course = courses.find(c => c.id === id);
+                if (course) {
+                    course.userScore = newScore;
+                }
+                
+                // Update the input field value to the clamped/formatted score
+                event.target.value = newScore.toFixed(1);
+
+                // Re-render the leaderboard
+                renderLeaderboard();
+            }
+        }
+
+        /**
+         * Handles the search bar input event.
+         * @param {Event} event - The DOM event object.
+         */
+        function handleSearch(event) {
+            const filterText = event.target.value;
+            renderAllCourses(filterText);
+        }
+
+        /**
+         * Initializes the application.
+         */
+        async function init() {
+            // Get DOM elements for event listeners and loading state
+            const searchBar = document.getElementById('search-bar');
+            const allCoursesList = document.getElementById('all-courses-list');
+
+            if (!allCoursesList) return; // Stop if the list doesn't exist
+
+            try {
+                // 1. Show loading state
+                allCoursesList.innerHTML = `<p class="text-gray-400 text-center">Loading courses...</p>`;
+
+                // 2. Fetch the course data from the JSON file
+                const response = await fetch('catalog.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const courseData = await response.json();
+
+                // 3. Process the raw data into the 'courses' array
+                for (const id in courseData) {
+                    const course = courseData[id];
+                    if (course.subj && course.crse && course.name) {
+                        courses.push({
+                            id: id,
+                            name: course.name,
+                            subj: course.subj,
+                            crse: course.crse,
+                            difficulty: getDifficulty(course.crse, course.name),
+                            userScore: 0.0 // Initialize all scores to 0
+                        });
+                    }
+                }
+
+                // 4. (Optional) Add some default scores for a nice initial leaderboard (scaled to /5)
+                const defaultScores = {
+                    "CSCI-1200": 4.8,
+                    "CSCI-2300": 4.6,
+                    "ECSE-2010": 4.0,
+                    "MATH-2400": 4.4,
+                    "PHYS-1200": 4.3,
+                    "CSCI-4210": 4.5,
+                    "ITWS-2110": 4.4,
+                    "MATH-1010": 3.8,
+                };
+
+                courses.forEach(course => {
+                    if (defaultScores[course.id]) {
+                        course.userScore = defaultScores[course.id];
+                    }
+                });
+
+                // 5. Set up event listeners
+                if (searchBar) {
+                    searchBar.addEventListener('input', handleSearch);
+                }
+                if (allCoursesList) {
+                    // Use event delegation for score inputs
+                    allCoursesList.addEventListener('change', handleScoreChange);
+                }
+
+                // 6. Initial render
+                renderAllCourses();
+                renderLeaderboard();
+
+            } catch (error) {
+                console.error("Failed to load course data:", error);
+                allCoursesList.innerHTML = `
+                    <div class="bg-red-900/50 border border-red-700 text-red-200 p-4 rounded-lg">
+                        <h3 class="font-bold">Error Loading Courses</h3>
+                        <p>Could not load <code class="bg-gray-800 px-1 rounded">catalog.json</code>. Make sure the file is in the same directory as this HTML file and the file name is correct.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // --- INITIALIZATION ---
+        // Wait for the DOM to be fully loaded before running the script
+        document.addEventListener('DOMContentLoaded', init);
+
+    </script>
+</body>
+</html>
