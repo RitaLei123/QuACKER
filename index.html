@@ -32,6 +32,19 @@
         #review-modal-content {
             transition: transform 0.25s ease;
         }
+        /* Simple spinner for loading state */
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #ef4444; /* red-500 */
+            width: 32px;
+            height: 32px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
 </head>
@@ -153,7 +166,7 @@
                                 </label>
                             </div>
                         </div>
-                        <button type="submit" class="w-full bg-gradient-to-r from-red-600 to-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:from-red-700 hover:to-red-600 transition-colors shadow-lg">
+                        <button type="submit" id="submit-review-btn" class="w-full bg-gradient-to-r from-red-600 to-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:from-red-700 hover:to-red-600 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
                             Submit Review
                         </button>
                     </form>
@@ -162,10 +175,21 @@
         </div>
     </div>
 
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    <script>
-        // --- DATA ---
-        let courses = [];
+        // --- GLOBAL STATE ---
+        let courses = []; // This will hold all courses from catalog.json
+        let db; // Firestore database instance
+        let auth; // Firebase auth instance
+        let reviewsCollection; // Reference to the 'reviews' collection
+        let appId; // The app ID for database paths
+        let userId; // The user's ID
+
         const hassSubjects = [
             'ARTS', 'COGS', 'COMM', 'ECON', 'GSAS', 
             'IHSS', 'INQR', 'LANG', 'LITR', 'PHIL', 
@@ -202,33 +226,49 @@
         }
 
         /**
-         * Calculates and updates the average scores for a single course.
-         * @param {object} course - The course object to update.
+         * Calculates and updates the average scores for all courses based on reviews.
+         * @param {Array} allReviews - An array of all review documents from Firestore.
          */
-        function calculateCourseAverages(course) {
-            if (!course.reviews || course.reviews.length === 0) {
+        function calculateAllAverages(allReviews) {
+            // 1. Reset all course review data
+            const reviewMap = new Map();
+            courses.forEach(course => {
+                course.reviews = [];
                 course.avgEasiness = 0.0;
                 course.avgUsefulness = 0.0;
                 course.avgWorkload = 0.0;
                 course.avgAttendance = 0;
                 course.reviewCount = 0;
-                return;
-            }
+                reviewMap.set(course.id, course);
+            });
 
-            const total = course.reviews.reduce((acc, review) => {
-                acc.easiness += review.easiness;
-                acc.usefulness += review.usefulness;
-                acc.workload += review.workload;
-                acc.attendance += (review.attendance === 'yes' ? 1 : 0);
-                return acc;
-            }, { easiness: 0, usefulness: 0, workload: 0, attendance: 0 });
+            // 2. Aggregate reviews from Firestore
+            allReviews.forEach(review => {
+                const course = reviewMap.get(review.courseId);
+                if (course) {
+                    course.reviews.push(review);
+                }
+            });
 
-            const n = course.reviews.length;
-            course.reviewCount = n;
-            course.avgEasiness = total.easiness / n;
-            course.avgUsefulness = total.usefulness / n;
-            course.avgWorkload = total.workload / n;
-            course.avgAttendance = (total.attendance / n) * 100;
+            // 3. Calculate new averages for all courses
+            courses.forEach(course => {
+                if (course.reviews.length > 0) {
+                    const total = course.reviews.reduce((acc, review) => {
+                        acc.easiness += review.easiness;
+                        acc.usefulness += review.usefulness;
+                        acc.workload += review.workload;
+                        acc.attendance += (review.attendance === 'yes' ? 1 : 0);
+                        return acc;
+                    }, { easiness: 0, usefulness: 0, workload: 0, attendance: 0 });
+
+                    const n = course.reviews.length;
+                    course.reviewCount = n;
+                    course.avgEasiness = total.easiness / n;
+                    course.avgUsefulness = total.usefulness / n;
+                    course.avgWorkload = total.workload / n;
+                    course.avgAttendance = (total.attendance / n) * 100;
+                }
+            });
         }
 
         /**
@@ -253,15 +293,28 @@
                 return a.crse.localeCompare(b.crse);
             });
 
-            if (filteredCourses.length === 0) {
+            if (filteredCourses.length === 0 && lowerFilter.length > 0) {
+                listElement.innerHTML = `<p class="text-gray-400 text-center">No courses found for "${filterText}".</p>`;
+                return;
+            } else if (filteredCourses.length === 0 && courses.length > 0) {
                 listElement.innerHTML = `<p class="text-gray-400 text-center">No courses found.</p>`;
+                return;
+            }
+
+            // Only show loading state if courses haven't been loaded yet
+            if (courses.length === 0) {
+                 listElement.innerHTML = `
+                    <div class="flex flex-col items-center justify-center p-8">
+                        <div class="spinner"></div>
+                        <p class="text-gray-400 text-center mt-4">Loading courses...</p>
+                    </div>`;
                 return;
             }
 
             listElement.innerHTML = filteredCourses.map(course => `
                 <div class="flex justify-between items-center bg-gray-700/50 p-4 rounded-lg">
-                    <div class="flex-grow pr-4">
-                        <span class="font-semibold text-white block">${course.name}</span>
+                    <div class="flex-grow pr-4 min-w-0">
+                        <span class="font-semibold text-white block truncate">${course.name}</span>
                         <span class="text-sm text-gray-400">${course.id}</span>
                         <!-- Tags -->
                         <span class="${getDifficultyColor(course.difficulty)} text-white text-xs px-2 py-0.5 rounded-full ml-2">
@@ -272,10 +325,11 @@
                             HASS
                         </span>` : ''}
                         <!-- Average Scores -->
-                        <div class="flex gap-4 mt-2 text-xs text-gray-300">
+                        <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-300">
                             <span>Easiness: <strong class="text-green-400">${course.avgEasiness.toFixed(1)}</strong></span>
                             <span>Usefulness: <strong class="text-blue-400">${course.avgUsefulness.toFixed(1)}</strong></span>
                             <span>Workload: <strong class="text-yellow-400">${course.avgWorkload.toFixed(1)}</strong></span>
+                            <span>(${course.reviewCount} reviews)</span>
                         </div>
                     </div>
                     <div class="flex-shrink-0">
@@ -298,23 +352,35 @@
             const listElement = document.getElementById('leaderboard-list');
             if (!listElement) return;
 
+            if (courses.length === 0) {
+                listElement.innerHTML = `
+                    <div class="flex flex-col items-center justify-center p-8">
+                        <div class="spinner"></div>
+                        <p class="text-gray-400 text-center mt-4">Loading ratings...</p>
+                    </div>`;
+                return;
+            }
+
             const sortedCourses = [...courses]
                 .filter(c => c.reviewCount > 0) // Only show courses with reviews
                 .sort((a, b) => {
                     switch (sortBy) {
                         case 'easiness':
+                            // Higher score is better
                             return b.avgEasiness - a.avgEasiness;
                         case 'workload':
-                            return a.avgWorkload - b.avgWorkload; // Lower workload is better
+                            // Lower score is better
+                            return a.avgWorkload - b.avgWorkload; 
                         case 'usefulness':
                         default:
+                            // Higher score is better
                             return b.avgUsefulness - a.avgUsefulness;
                     }
                 })
                 .slice(0, 10);
 
             if (sortedCourses.length === 0) {
-                listElement.innerHTML = `<p class="text-gray-400 text-center">No reviews yet!</p>`;
+                listElement.innerHTML = `<p class="text-gray-400 text-center">No reviews yet! Be the first.</p>`;
                 return;
             }
 
@@ -338,13 +404,13 @@
                 return `
                 <li class="flex justify-between items-center bg-gray-700/50 p-3 rounded-lg transition-all hover:bg-gray-700">
                     <div class="flex items-center min-w-0">
-                        <span class="text-2xl font-bold text-red-400 mr-4 w-8 text-center">${index + 1}</span>
+                        <span class="text-lg font-bold text-red-400 mr-3 w-8 text-center">${index + 1}</span>
                         <div class="flex-grow min-w-0">
                             <span class="font-semibold text-white block truncate">${course.name}</span>
                             <span class="text-sm text-gray-400">${course.id} | ${course.reviewCount} review(s)</span>
                         </div>
                     </div>
-                    <span class_name="text-xl font-bold ${scoreColor} ml-2">${score}</span>
+                    <span class="text-xl font-bold ${scoreColor} ml-2">${score}</span>
                 </li>
             `}).join('');
         }
@@ -368,6 +434,8 @@
 
             // Reset form
             document.getElementById('review-form').reset();
+            document.getElementById('submit-review-btn').disabled = false;
+            document.getElementById('submit-review-btn').textContent = 'Submit Review';
 
             // Show modal
             const modal = document.getElementById('review-modal');
@@ -381,84 +449,68 @@
             const modalContent = document.getElementById('review-modal-content');
             modal.classList.add('opacity-0');
             modalContent.classList.add('scale-95');
-            // Wait for transition to finish before hiding
             setTimeout(() => {
                 modal.classList.add('invisible');
             }, 250);
         }
 
-        function handleSubmitReview(event) {
+        async function handleSubmitReview(event) {
             event.preventDefault();
+            const submitBtn = document.getElementById('submit-review-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
             
             // Get data from form
             const courseId = document.getElementById('modal-course-hidden-id').value;
-            const easiness = parseInt(document.getElementById('review-easiness').value);
-            const usefulness = parseInt(document.getElementById('review-usefulness').value);
-            const workload = parseInt(document.getElementById('review-workload').value);
-            const attendance = document.querySelector('input[name="review-attendance"]:checked').value;
+            const review = {
+                courseId: courseId,
+                easiness: parseInt(document.getElementById('review-easiness').value),
+                usefulness: parseInt(document.getElementById('review-usefulness').value),
+                workload: parseInt(document.getElementById('review-workload').value),
+                attendance: document.querySelector('input[name="review-attendance"]:checked').value,
+                createdAt: new Date(),
+                userId: userId // Add user ID to the review
+            };
 
-            // Find the course and add the new review
-            const course = courses.find(c => c.id === courseId);
-            if (course) {
-                course.reviews.push({ easiness, usefulness, workload, attendance });
-                
-                // Recalculate averages for just this course
-                calculateCourseAverages(course);
-                
-                // Re-render everything
-                const currentSort = document.getElementById('leaderboard-sort').value;
-                const currentSearch = document.getElementById('search-bar').value;
-                renderLeaderboard(currentSort);
-                renderAllCourses(currentSearch);
-                
-                // Close modal
+            try {
+                // Add the new review document to Firestore
+                await addDoc(reviewsCollection, review);
+                // The onSnapshot listener will automatically update the UI
                 closeReviewModal();
+            } catch (error) {
+                console.error("Error adding review: ", error);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Review';
+                // You could show an error message to the user here
             }
         }
 
         // --- EVENT HANDLERS ---
         function handleSearch(event) {
-            const filterText = event.target.value;
-            renderAllCourses(filterText);
+            renderAllCourses(event.target.value);
         }
 
         function handleLeaderboardSort(event) {
-            const sortBy = event.target.value;
-            renderLeaderboard(sortBy);
+            renderLeaderboard(event.target.value);
         }
 
         function handleListClick(event) {
             const reviewButton = event.target.closest('.review-btn');
             if (reviewButton) {
-                const id = reviewButton.dataset.id;
-                openReviewModal(id);
+                openReviewModal(reviewButton.dataset.id);
             }
         }
-
+        
         /**
-         * Initializes the application.
+         * Loads all course data from the static catalog.json
          */
-        async function init() {
-            // Get DOM elements for event listeners
-            const searchBar = document.getElementById('search-bar');
-            const allCoursesList = document.getElementById('all-courses-list');
-            const leaderboardSort = document.getElementById('leaderboard-sort');
-            const modalCloseBtn = document.getElementById('modal-close-btn');
-            const modal = document.getElementById('review-modal');
-            const reviewForm = document.getElementById('review-form');
-
-            if (!allCoursesList) return;
-
+        async function loadCourseCatalog() {
             try {
-                // 1. Show loading state
-                allCoursesList.innerHTML = `<p class="text-gray-400 text-center">Loading courses...</p>`;
-
-                // 2. Fetch the course data
                 const response = await fetch('catalog.json');
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const courseData = await response.json();
 
-                // 3. Process the raw data into the 'courses' array
+                // Process the raw data into the 'courses' array
                 for (const id in courseData) {
                     const course = courseData[id];
                     if (course.subj && course.crse && course.name) {
@@ -473,47 +525,10 @@
                         });
                     }
                 }
-
-                // 4. Add hard-coded sample reviews to simulate a real database
-                const sampleReviews = {
-                    "CSCI-1200": [{ easiness: 2, usefulness: 5, workload: 4, attendance: 'yes' }, { easiness: 1, usefulness: 5, workload: 5, attendance: 'yes' }],
-                    "CSCI-2300": [{ easiness: 3, usefulness: 5, workload: 4, attendance: 'no' }, { easiness: 2, usefulness: 5, workload: 4, attendance: 'yes' }],
-                    "ECSE-2010": [{ easiness: 2, usefulness: 4, workload: 5, attendance: 'yes' }],
-                    "MATH-2400": [{ easiness: 3, usefulness: 4, workload: 3, attendance: 'no' }, { easiness: 2, usefulness: 5, workload: 4, attendance: 'no' }],
-                    "PHYS-1200": [{ easiness: 3, usefulness: 4, workload: 3, attendance: 'yes' }],
-                    "CSCI-4210": [{ easiness: 2, usefulness: 5, workload: 5, attendance: 'no' }],
-                    "ITWS-2110": [{ easiness: 4, usefulness: 4, workload: 2, attendance: 'no' }, { easiness: 5, usefulness: 3, workload: 2, attendance: 'no' }],
-                    "ECON-1200": [{ easiness: 5, usefulness: 3, workload: 1, attendance: 'no' }, { easiness: 4, usefulness: 4, workload: 2, attendance: 'no' }],
-                    "MATH-1010": [{ easiness: 4, usefulness: 5, workload: 3, attendance: 'yes' }]
-                };
-
-                courses.forEach(course => {
-                    if (sampleReviews[course.id]) {
-                        course.reviews = sampleReviews[course.id];
-                    }
-                    // Calculate averages for all courses
-                    calculateCourseAverages(course);
-                });
-
-                // 5. Set up event listeners
-                searchBar.addEventListener('input', handleSearch);
-                leaderboardSort.addEventListener('change', handleLeaderboardSort);
-                allCoursesList.addEventListener('click', handleListClick);
-                
-                // Modal listeners
-                modalCloseBtn.addEventListener('click', closeReviewModal);
-                modal.addEventListener('click', (e) => {
-                    if (e.target.id === 'review-modal') closeReviewModal(); // Close on backdrop click
-                });
-                reviewForm.addEventListener('submit', handleSubmitReview);
-
-                // 6. Initial render
-                renderAllCourses();
-                renderLeaderboard('usefulness'); // Default sort
-
             } catch (error) {
                 console.error("Failed to load course data:", error);
-                allCoursesList.innerHTML = `
+                const listElement = document.getElementById('all-courses-list');
+                listElement.innerHTML = `
                     <div class="bg-red-900/50 border border-red-700 text-red-200 p-4 rounded-lg">
                         <h3 class="font-bold">Error Loading Courses</h3>
                         <p>Could not load <code class="bg-gray-800 px-1 rounded">catalog.json</code>. Make sure the file is in the same directory as this HTML file and the file name is correct.</p>
@@ -522,9 +537,104 @@
             }
         }
 
-        // --- INITIALIZATION ---
-        document.addEventListener('DOMContentLoaded', init);
+        /**
+         * Sets up the real-time listener for reviews from Firestore.
+         */
+        function setupReviewListener() {
+            // Define the collection path
+            const reviewsPath = `/artifacts/${appId}/public/data/reviews`;
+            reviewsCollection = collection(db, reviewsPath);
 
+            // Create a query
+            const q = query(reviewsCollection);
+
+            // Set up the real-time listener
+            onSnapshot(q, (querySnapshot) => {
+                const allReviews = [];
+                querySnapshot.forEach((doc) => {
+                    allReviews.push(doc.data());
+                });
+                
+                // Recalculate all averages with the new data
+                calculateAllAverages(allReviews);
+
+                // Re-render everything
+                const currentSort = document.getElementById('leaderboard-sort').value;
+                const currentSearch = document.getElementById('search-bar').value;
+                renderLeaderboard(currentSort);
+                renderAllCourses(currentSearch);
+
+            }, (error) => {
+                console.error("Error listening to reviews: ", error);
+                // Handle error (e.g., show a message to the user)
+            });
+        }
+
+        /**
+         * Initializes the application.
+         */
+        async function init() {
+            // 1. Get DOM elements
+            const searchBar = document.getElementById('search-bar');
+            const leaderboardSort = document.getElementById('leaderboard-sort');
+            const allCoursesList = document.getElementById('all-courses-list');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+            const modal = document.getElementById('review-modal');
+            const reviewForm = document.getElementById('review-form');
+
+            // 2. Render initial loading states
+            renderAllCourses();
+            renderLeaderboard();
+
+            // 3. Load the static course catalog
+            await loadCourseCatalog();
+            
+            // 4. Initialize Firebase
+            try {
+                // These are special variables provided by the environment
+                const firebaseConfig = JSON.parse(__firebase_config);
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('Debug'); // Optional: for more detailed console logs
+
+                // 5. Sign in the user
+                if (typeof __initial_auth_token !== 'undefined') {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                userId = auth.currentUser?.uid || `anon_${Math.random().toString(36).substring(2, 9)}`;
+
+                // 6. Set up event listeners
+                searchBar.addEventListener('input', handleSearch);
+                leaderboardSort.addEventListener('change', handleLeaderboardSort);
+                allCoursesList.addEventListener('click', handleListClick);
+                modalCloseBtn.addEventListener('click', closeReviewModal);
+                modal.addEventListener('click', (e) => {
+                    if (e.target.id === 'review-modal') closeReviewModal();
+                });
+                reviewForm.addEventListener('submit', handleSubmitReview);
+
+                // 7. Set up the real-time database listener
+                // This will trigger the first data load and re-render
+                setupReviewListener();
+
+            } catch (error) {
+                console.error("Firebase initialization failed:", error);
+                document.getElementById('all-courses-list').innerHTML = `
+                    <div class="bg-red-900/50 border border-red-700 text-red-200 p-4 rounded-lg">
+                        <h3 class="font-bold">Database Error</h3>
+                        <p>Could not connect to the reviews database. Please refresh the page.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // --- START THE APP ---
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
