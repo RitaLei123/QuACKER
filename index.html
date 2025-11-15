@@ -179,7 +179,7 @@
     <script type="module">
         // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, onSnapshot, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- GLOBAL STATE ---
@@ -187,7 +187,7 @@
         let db; // Firestore database instance
         let auth; // Firebase auth instance
         let reviewsCollection; // Reference to the 'reviews' collection
-        let appId; // The app ID for database paths
+        const appId = 'rpi-course-explorer'; // A unique name for your app's data path
         let userId; // The user's ID
 
         const hassSubjects = [
@@ -455,13 +455,7 @@
         }
 
         async function handleSubmitReview(event) {
-            event.preventDefault();
-            const submitBtn = document.getElementById('submit-review-btn');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Submitting...';
-            
-            // Get data from form
-            const courseId = document.getElementById('modal-course-hidden-id').value;
+            // ... (existing code) ...
             const review = {
                 courseId: courseId,
                 easiness: parseInt(document.getElementById('review-easiness').value),
@@ -574,17 +568,33 @@
          * Initializes the application.
          */
         async function init() {
-            // ... (existing code) ...
+            // 1. Get DOM elements
+            const searchBar = document.getElementById('search-bar');
+            const leaderboardSort = document.getElementById('leaderboard-sort');
+            const allCoursesList = document.getElementById('all-courses-list');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+            const modal = document.getElementById('review-modal');
+            const reviewForm = document.getElementById('review-form');
+
+            // 2. Render initial loading states
+            renderAllCourses();
+            renderLeaderboard();
+
+            // 3. Load the static course catalog
+            await loadCourseCatalog();
+            
             // 4. Initialize Firebase
             try {
-                // Check if the special variables are present
-                if (typeof __firebase_config === 'undefined' || !__firebase_config) {
+                // Access config from window object for better reliability
+                const firebaseConfigStr = window.__firebase_config;
+                const authToken = window.__initial_auth_token;
+                
+                if (!firebaseConfigStr) {
                     throw new Error("Firebase config not found. Are you in the correct preview environment?");
                 }
                 
-                // These are special variables provided by the environment
-                const firebaseConfig = JSON.parse(__firebase_config);
-                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                const firebaseConfig = JSON.parse(firebaseConfigStr);
+                appId = window.__app_id || 'default-app-id';
 
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
@@ -592,8 +602,8 @@
                 setLogLevel('Debug'); // Optional: for more detailed console logs
 
                 // 5. Sign in the user
-                if (typeof __initial_auth_token !== 'undefined') {
-                    await signInWithCustomToken(auth, __initial_auth_token);
+                if (authToken) {
+                    await signInWithCustomToken(auth, authToken);
                 } else {
                     await signInAnonymously(auth);
                 }
@@ -615,21 +625,46 @@
 
             } catch (error) {
                 console.error("Firebase initialization failed:", error);
-                document.getElementById('all-courses-list').innerHTML = `
+                const errorMsg = `
                     <div class="bg-red-900/50 border border-red-700 text-red-200 p-4 rounded-lg">
                         <h3 class="font-bold">Database Error</h3>
                         <p>Could not connect to the reviews database.</p>
                         <p class="text-sm mt-2 text-red-300"><strong>Details:</strong> ${error.message}</p>
-                        <p class="text-sm mt-2">Please try refreshing the preview. If this persists, the environment may not be providing database credentials.</p>
+                        <p class="text-sm mt-2">Make sure you have pasted your firebaseConfig into the &lt;script&gt; tag in index.html.</p>
                     </div>
                 `;
-                // Also update the leaderboard
+                document.getElementById('all-courses-list').innerHTML = errorMsg;
                 document.getElementById('leaderboard-list').innerHTML = `<p class="text-red-300 text-center p-4">Database connection failed.</p>`;
             }
         }
 
         // --- START THE APP ---
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', () => {
+            // ===================================================================
+            // === PASTE YOUR FIREBASE CONFIGURATION OBJECT HERE ===
+            // ===================================================================
+            //
+            // 1. Go to https://firebase.google.com/
+            // 2. Create a new project.
+            // 3. Create a "Firestore Database" (use test rules for now).
+            // 4. Go to Project Settings -> General -> Your apps -> Web app (</>).
+            // 5. Copy the 'firebaseConfig' object and paste it below.
+            
+            const firebaseConfig = {
+                apiKey: "YOUR_API_KEY",
+                authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+                projectId: "YOUR_PROJECT_ID",
+                storageBucket: "YOUR_PROJECT_ID.appspot.com",
+                messagingSenderId: "YOUR_SENDER_ID",
+                appId: "YOUR_APP_ID"
+            };
+
+            // ===================================================================
+            // === (No need to edit below this line) ===
+            // ===================================================================
+
+            init(firebaseConfig);
+        });
     </script>
 </body>
 </html>
