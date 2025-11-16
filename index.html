@@ -106,29 +106,26 @@
 
             <!-- Right Column: All Courses & Search -->
             <div class="lg:col-span-2 bg-gray-800 p-6 rounded-xl shadow-2xl">
-                <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2 text-white">
-                    All Courses
-                </h2>
-                <!-- Search and Filter Controls -->
-                <!-- MODIFIED LAYOUT: Replaced space-y-4 container with a single flex row -->
-                <div class="flex flex-col md:flex-row gap-4 mb-4">
-                    <!-- Column 1: Search Bar -->
-                    <input 
-                        type="text" 
-                        id="search-bar" 
-                        placeholder="Search by name, subject, or course #" 
-                        class="w-full md:w-2/5 p-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
-                    >
-                    
-                    <!-- Column 2: Filter + Checkbox -->
-                    <div class="w-full md:w-2/5 flex flex-col space-y-2 justify-center">
-                        <!-- COMBINED ALL COURSES FILTER -->
-                        <select id="all-courses-filter" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500">
+                <!-- NEW: Matched structure and style to Leaderboard column for balance -->
+                <div class="flex flex-col border-b border-gray-700 pb-2 mb-4">
+                    <h2 class="text-2xl font-semibold text-white mb-2">
+                        All Courses
+                    </h2>
+                    <!-- NEW: Reverted to simple stacked controls to match leaderboard height -->
+                    <div class="flex flex-col space-y-2">
+                        <input 
+                            type="text" 
+                            id="search-bar" 
+                            placeholder="Search by name, subject, or course #" 
+                            class="w-full p-1 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                        >
+                        <select 
+                            id="all-courses-filter" 
+                            class="w-full p-1 bg-gray-700 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                        >
                             <option value="">Filter by School/Core Tag...</option>
                             <!-- Options populated by JavaScript -->
                         </select>
-                        
-                        <!-- "Show only reviewed courses" checkbox -->
                         <div class="flex items-center justify-end">
                             <input 
                                 type="checkbox" 
@@ -142,7 +139,7 @@
                     </div>
                 </div>
 
-                <div id="all-courses-list" class="max-h-[65vh] overflow-y-auto space-y-3 pr-2">
+                <div id="all-courses-list" class="max-h-[60vh] overflow-y-auto space-y-3 pr-2">
                     <!-- Course list will be injected here by JavaScript -->
                     <p class="text-gray-400 text-center">Loading courses...</p>
                 </div>
@@ -1606,11 +1603,11 @@
                             authReady = true;
                             attachFirebaseListener();
                         }
-                    } else { // <-- Added this back
-                        console.log("Auth state changed: User is signed out."); // <-- Added this back
-                        authReady = false; // <-- Added this back
-                    } // <-- Added this back
-                }); // <-- FIX: Added missing });
+                    } else {
+                        console.log("Auth state changed: User is signed out.");
+                        authReady = false;
+                    }
+                }); // <-- This line was fixed
 
                 // --- FIX: Re-added missing sign-in logic ---
                 if (typeof __initial_auth_token !== 'undefined') {
