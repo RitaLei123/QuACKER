@@ -85,17 +85,11 @@
                     </div>
                 </div>
                 <!-- Leaderboard Filters -->
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <input 
-                        type="text" 
-                        id="leaderboard-subject-filter" 
-                        placeholder="Filter by subject (e.g. CSCI)"
-                        class="col-span-2 sm:col-span-1 w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
-                    >
-                    <label class="col-span-2 sm:col-span-1 flex items-center justify-end space-x-2 text-sm text-gray-300">
-                        <input type="checkbox" id="leaderboard-hass-filter" class="form-checkbox bg-gray-700 border-gray-600 text-red-500 rounded focus:ring-red-400">
-                        <span>HASS Courses Only</span>
-                    </label>
+                <div class="grid grid-cols-1 gap-4 mb-4">
+                    <label for="leaderboard-school-filter" class="text-sm font-medium text-gray-300">Filter by School</label>
+                    <select id="leaderboard-school-filter" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500">
+                        <!-- Options will be added by JS -->
+                    </select>
                 </div>
                 <!-- Leaderboard List -->
                 <ol id="leaderboard-list" class="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
@@ -108,12 +102,27 @@
                 <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2 text-white">
                     All Courses
                 </h2>
-                <input 
-                    type="text" 
-                    id="search-bar" 
-                    placeholder="Search by name, subject (e.g., CSCI), or course #" 
-                    class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg mb-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
+                <!-- All Courses Filters -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <input 
+                        type="text" 
+                        id="search-bar" 
+                        placeholder="Search by name, subject, or course #" 
+                        class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 md:col-span-2"
+                    >
+                    <div>
+                        <label for="all-courses-school-filter" class="text-sm font-medium text-gray-300">Filter by School</label>
+                        <select id="all-courses-school-filter" class="w-full mt-1 p-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500">
+                            <!-- Options will be added by JS -->
+                        </select>
+                    </div>
+                    <div class="flex items-end justify-start md:justify-end pb-1">
+                        <label class="flex items-center space-x-2 text-sm text-gray-300">
+                            <input type="checkbox" id="all-courses-reviewed-filter" class="form-checkbox bg-gray-700 border-gray-600 text-red-500 rounded focus:ring-red-400">
+                            <span>Show reviewed courses only</span>
+                        </label>
+                    </div>
+                </div>
                 <div id="all-courses-list" class="max-h-[65vh] overflow-y-auto space-y-3 pr-2">
                     <!-- Course list will be injected here by JavaScript -->
                 </div>
@@ -296,13 +305,27 @@
         let auth; // Firebase auth instance
         let reviewsCollection; // Reference to the 'reviews' collection
         let userId; // The user's ID
-
-        const hassSubjects = [
-            'ARTS', 'COGS', 'COMM', 'ECON', 'GSAS', 
-            'IHSS', 'INQR', 'LANG', 'LITR', 'PHIL', 
-            'PSYC', 'STSO', 'WRIT'
-        ];
         
+        // This is the school data provided by the user
+        const schoolData = [
+            { "name": "Humanities, Arts, and Social Sciences", "depts": [ { "code": "ARTS", "name": "Arts" }, { "code": "COGS", "name": "Cognitive Science" }, { "code": "COMM", "name": "Communication" }, { "code": "ECON", "name": "Economics" }, { "code": "GSAS", "name": "Games and Simulation Arts and Sciences" }, { "code": "IHSS", "name": "Interdisciplinary Humanities and Social Sciences" }, { "code": "INQR", "name": "HASS Inquiry" }, { "code": "LANG", "name": "Foreign Languages" }, { "code": "LITR", "name": "Literature" }, { "code": "PHIL", "name": "Philosophy" }, { "code": "PSYC", "name": "Psychology" }, { "code": "STSO", "name": "Science, Technology, and Society" }, { "code": "WRIT", "name": "Writing" } ] },
+            { "name": "Interdisciplinary and Other", "depts": [ { "code": "ADMN", "name": "Administrative Courses" }, { "code": "USAF", "name": "Aerospace Studies (Air Force ROTC)" }, { "code": "USAR", "name": "Military Science (Army ROTC)" }, { "code": "USNA", "name": "Naval Science (Navy ROTC)" } ] },
+            { "name": "Engineering", "depts": [ { "code": "BMED", "name": "Biomedical Engineering" }, { "code": "CHME", "name": "Chemical Engineering" }, { "code": "CIVL", "name": "Civil Engineering" }, { "code": "ECSE", "name": "Electrical, Computer, and Systems Engineering" }, { "code": "ENGR", "name": "General Engineering" }, { "code": "ENVE", "name": "Environmental Engineering" }, { "code": "ESCI", "name": "Engineering Science" }, { "code": "ISYE", "name": "Industrial and Systems Engineering" }, { "code": "MANE", "name": "Mechanical, Aerospace, and Nuclear Engineering" }, { "code": "MTLE", "name": "Materials Science and Engineering" } ] },
+            { "name": "Architecture", "depts": [ { "code": "ARCH", "name": "Architecture" }, { "code": "LGHT", "name": "Lighting" } ] },
+            { "name": "Information Technology and Web Science", "depts": [ { "code": "ITWS", "name": "Information Technology and Web Science" } ] },
+            { "name": "Science", "depts": [ { "code": "ASTR", "name": "Astronomy" }, { "code": "BCBP", "name": "Biochemistry and Biophysics" }, { "code": "BIOL", "name": "Biology" }, { "code": "CHEM", "name": "Chemistry" }, { "code": "CSCI", "name": "Computer Science" }, { "code": "ERTH", "name": "Earth and Environmental Science" }, { "code": "ISCI", "name": "Interdisciplinary Science" }, { "code": "MATH", "name": "Mathematics" }, { "code": "MATP", "name": "Mathematical Programming, Probability, and Statistics" }, { "code": "PHYS", "name": "Physics" } ] },
+            { "name": "Management", "depts": [ { "code": "BUSN", "name": "Business (H)" }, { "code": "MGMT", "name": "Management" } ] },
+            { "name": "Uncategorized", "depts": [ { "code": "ILEA", "name": "Independent Learning Exper" } ] }
+        ];
+
+        // Create a lookup map for subject -> school name
+        const subjectSchoolMap = new Map();
+        schoolData.forEach(school => {
+            school.depts.forEach(dept => {
+                subjectSchoolMap.set(dept.code, school.name);
+            });
+        });
+
         // Grade to GPA conversion map
         const gradeMap = {
             'A': 4.0, 'A-': 3.67, 'B+': 3.33, 'B': 3.0, 'B-': 2.67,
@@ -449,19 +472,37 @@
 
         /**
          * Renders the entire list of courses on the right side.
-         * @param {string} [filterText=""] - Optional text to filter the course list.
          */
-        function renderAllCourses(filterText = "") {
+        function renderAllCourses() {
             const listElement = document.getElementById('all-courses-list');
             if (!listElement) return;
 
-            const lowerFilter = filterText.toLowerCase();
+            // Get filter values
+            const filterText = document.getElementById('search-bar').value.toLowerCase();
+            const schoolFilter = document.getElementById('all-courses-school-filter').value;
+            const reviewedOnly = document.getElementById('all-courses-reviewed-filter').checked;
             
-            const filteredCourses = courses.filter(course => (
-                course.name.toLowerCase().includes(lowerFilter) ||
-                course.id.toLowerCase().includes(lowerFilter) ||
-                course.subj.toLowerCase().includes(lowerFilter)
-            ));
+            const filteredCourses = courses.filter(course => {
+                // Text search filter
+                const textMatch = (
+                    course.name.toLowerCase().includes(filterText) ||
+                    course.id.toLowerCase().includes(filterText) ||
+                    course.subj.toLowerCase().includes(filterText)
+                );
+                if (!textMatch) return false;
+                
+                // School filter
+                if (schoolFilter !== 'ALL' && course.school !== schoolFilter) {
+                    return false;
+                }
+                
+                // Reviewed only filter
+                if (reviewedOnly && course.reviewCount === 0) {
+                    return false;
+                }
+                
+                return true;
+            });
 
             filteredCourses.sort((a, b) => {
                 if (a.subj < b.subj) return -1;
@@ -469,8 +510,8 @@
                 return a.crse.localeCompare(b.crse);
             });
 
-            if (filteredCourses.length === 0 && lowerFilter.length > 0) {
-                listElement.innerHTML = `<p class="text-gray-400 text-center">No courses found for "${filterText}".</p>`;
+            if (filteredCourses.length === 0 && (filterText.length > 0 || schoolFilter !== 'ALL' || reviewedOnly)) {
+                listElement.innerHTML = `<p class="text-gray-400 text-center">No courses found matching your filters.</p>`;
                 return;
             } else if (filteredCourses.length === 0 && courses.length > 0) {
                 listElement.innerHTML = `<p class="text-gray-400 text-center">No courses found.</p>`;
@@ -487,7 +528,11 @@
                 return;
             }
 
-            listElement.innerHTML = filteredCourses.map(course => `
+            listElement.innerHTML = filteredCourses.map(course => {
+                const schoolColor = course.isHass ? 'bg-purple-600' : 'bg-gray-600';
+                const schoolName = course.isHass ? 'HASS' : course.school.split(' ')[0]; // Short name for non-HASS
+                
+                return `
                 <div class="flex justify-between items-center bg-gray-700/50 p-4 rounded-lg">
                     <div class="flex-grow pr-4 min-w-0">
                         <span class="font-semibold text-white block truncate">${course.name}</span>
@@ -496,10 +541,9 @@
                         <span class="${getDifficultyColor(course.difficulty)} text-white text-xs px-2 py-0.5 rounded-full ml-2">
                             Diff: ${course.difficulty}
                         </span>
-                        ${course.isHass ? `
-                        <span class="bg-purple-600 text-white text-xs px-2 py-0.5 rounded-full ml-1">
-                            HASS
-                        </span>` : ''}
+                        <span class="${schoolColor} text-white text-xs px-2 py-0.5 rounded-full ml-1">
+                            ${schoolName}
+                        </span>
                         <!-- Average Scores -->
                         <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-300">
                             <span>Easiness: <strong class="text-green-400">${course.avgEasiness.toFixed(1)}</strong></span>
@@ -518,7 +562,7 @@
                         </button>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         /**
@@ -530,8 +574,7 @@
 
             // Get current filter values
             const sortBy = document.getElementById('leaderboard-sort').value;
-            const subjectFilter = document.getElementById('leaderboard-subject-filter').value.toLowerCase();
-            const hassOnly = document.getElementById('leaderboard-hass-filter').checked;
+            const schoolFilter = document.getElementById('leaderboard-school-filter').value;
 
             if (courses.length === 0) {
                 listElement.innerHTML = `
@@ -544,13 +587,9 @@
 
             const sortedCourses = [...courses]
                 .filter(c => c.reviewCount > 0) // Only show courses with reviews
-                .filter(c => { // Apply HASS filter
-                    if (!hassOnly) return true;
-                    return c.isHass;
-                })
-                .filter(c => { // Apply subject filter
-                    if (subjectFilter.length === 0) return true;
-                    return c.subj.toLowerCase().includes(subjectFilter);
+                .filter(c => { // Apply School filter
+                    if (schoolFilter === 'ALL') return true;
+                    return c.school === schoolFilter;
                 })
                 .sort((a, b) => { // Apply sorting
                     switch (sortBy) {
@@ -839,13 +878,18 @@
         }
 
         // --- EVENT HANDLERS ---
-        function handleSearch(event) {
-            const filterText = event.target.value;
-            renderAllCourses(filterText);
+        
+        /**
+         * Handles all filter changes for the "All Courses" list
+         */
+        function handleAllCoursesFilterChange() {
+             renderAllCourses();
         }
 
+        /**
+         * Handles all filter changes for the "Leaderboard" list
+         */
         function handleLeaderboardFilterChange() {
-            // This function is now used for all leaderboard filter changes
             renderLeaderboard();
         }
 
@@ -888,9 +932,8 @@
                 calculateAllAverages(allReviews);
 
                 // Re-render both lists (using the new leaderboard render function)
-                const currentSearch = document.getElementById('search-bar').value;
                 renderLeaderboard(); 
-                renderAllCourses(currentSearch);
+                renderAllCourses();
 
                 // This is a good place to update any open modal,
                 // so the user sees new comments appear in real-time.
@@ -901,14 +944,30 @@
                     const courseId = document.getElementById('modal-course-hidden-id').value;
                     if (courseId) {
                         const course = courses.find(c => c.id === courseId);
-                        openReviewModal(courseId); // Re-open to refresh all data
+                        // Re-populate modal content without fully closing/re-opening
+                        if (course) {
+                            document.getElementById('modal-avg-easiness').textContent = course.avgEasiness.toFixed(1);
+                            document.getElementById('modal-avg-usefulness').textContent = course.avgUsefulness.toFixed(1);
+                            document.getElementById('modal-avg-workload').textContent = course.avgWorkload.toFixed(1);
+                            document.getElementById('modal-avg-attendance').textContent = `${course.avgAttendance.toFixed(0)}%`;
+                            document.getElementById('modal-avg-grade').textContent = convertGpaToGrade(course.avgGpa);
+                            populateCommentsList(course, document.getElementById('modal-comments-list'));
+                        }
                     }
                 }
                 if (detailsModalOpen) {
                     const courseId = document.getElementById('details-modal-course-id').textContent;
                     if (courseId) {
                         const course = courses.find(c => c.id === courseId);
-                        openDetailsModal(courseId); // Re-open to refresh all data
+                         // Re-populate modal content without fully closing/re-opening
+                        if (course) {
+                            document.getElementById('details-modal-avg-easiness').textContent = course.avgEasiness.toFixed(1);
+                            document.getElementById('details-modal-avg-usefulness').textContent = course.avgUsefulness.toFixed(1);
+                            document.getElementById('details-modal-avg-workload').textContent = course.avgWorkload.toFixed(1);
+                            document.getElementById('details-modal-avg-attendance').textContent = `${course.avgAttendance.toFixed(0)}%`;
+                            document.getElementById('details-modal-avg-grade').textContent = convertGpaToGrade(course.avgGpa);
+                            populateCommentsList(course, document.getElementById('details-modal-comments-list'));
+                        }
                     }
                 }
 
@@ -922,19 +981,41 @@
                 `;
             });
         }
+        
+        /**
+         * Populates the school filter dropdowns
+         */
+        function populateSchoolFilters() {
+            const leaderboardFilter = document.getElementById('leaderboard-school-filter');
+            const allCoursesFilter = document.getElementById('all-courses-school-filter');
+            
+            const optionsHtml = schoolData.map(school => 
+                `<option value="${school.name}">${school.name}</option>`
+            ).join('');
+            
+            const allSchoolsOption = '<option value="ALL">All Schools</option>';
+            
+            leaderboardFilter.innerHTML = allSchoolsOption + optionsHtml;
+            allCoursesFilter.innerHTML = allSchoolsOption + optionsHtml;
+        }
 
         /**
          * Initializes the application.
          * @param {object} firebaseConfig - The Firebase config object.
          */
         async function init(firebaseConfig) {
-            // 1. Get DOM elements
+            // 1. Populate filters that don't depend on data
+            populateSchoolFilters();
+            
+            // 2. Get DOM elements
             const searchBar = document.getElementById('search-bar');
             const allCoursesList = document.getElementById('all-courses-list');
+            const allCoursesSchoolFilter = document.getElementById('all-courses-school-filter');
+            const allCoursesReviewedFilter = document.getElementById('all-courses-reviewed-filter');
+            
             const leaderboardList = document.getElementById('leaderboard-list');
             const leaderboardSort = document.getElementById('leaderboard-sort');
-            const leaderboardSubjectFilter = document.getElementById('leaderboard-subject-filter');
-            const leaderboardHassFilter = document.getElementById('leaderboard-hass-filter');
+            const leaderboardSchoolFilter = document.getElementById('leaderboard-school-filter');
             
             // Review Modal Elements
             const modalCloseBtn = document.getElementById('modal-close-btn');
@@ -946,14 +1027,15 @@
             const detailsModalCloseBtn = document.getElementById('details-modal-close-btn');
             const detailsModal = document.getElementById('details-modal');
 
-            // 2. Set up event listeners
-            // Use debounce on search bars to prevent lag
-            searchBar.addEventListener('input', debounce(handleSearch, 300));
-            leaderboardSubjectFilter.addEventListener('input', debounce(handleLeaderboardFilterChange, 300));
-            
-            // Other filters
+            // 3. Set up event listeners
+            // All Courses filters
+            searchBar.addEventListener('input', debounce(handleAllCoursesFilterChange, 300));
+            allCoursesSchoolFilter.addEventListener('change', handleAllCoursesFilterChange);
+            allCoursesReviewedFilter.addEventListener('change', handleAllCoursesFilterChange);
+
+            // Leaderboard filters
             leaderboardSort.addEventListener('change', handleLeaderboardFilterChange);
-            leaderboardHassFilter.addEventListener('change', handleLeaderboardFilterChange);
+            leaderboardSchoolFilter.addEventListener('change', handleLeaderboardFilterChange);
 
             // Click listeners for lists
             allCoursesList.addEventListener('click', handleListClick);
@@ -973,12 +1055,12 @@
                 if (e.target.id === 'details-modal') closeDetailsModal();
             });
             
-            // 3. Set initial loading state
+            // 4. Set initial loading state
             renderAllCourses(); // Will show loading spinner
             renderLeaderboard(); // Will show loading spinner
 
             try {
-                // 4. Initialize Firebase
+                // 5. Initialize Firebase
                 if (!firebaseConfig || !firebaseConfig.apiKey) {
                     throw new Error("Firebase config is missing or incomplete.");
                 }
@@ -988,33 +1070,35 @@
                 auth = getAuth(app);
                 setLogLevel('debug'); // For more detailed logs in the console
 
-                // 5. Sign in the user anonymously
+                // 6. Sign in the user anonymously
                 const userCredential = await signInAnonymously(auth);
                 userId = userCredential.user.uid;
                 console.log("Signed in anonymously as:", userId);
 
-                // 6. Fetch the course catalog
+                // 7. Fetch the course catalog
                 const response = await fetch('catalog.json');
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const courseData = await response.json();
 
-                // 7. Process catalog.json into the global 'courses' array
+                // 8. Process catalog.json into the global 'courses' array
                 for (const id in courseData) {
                     const course = courseData[id];
                     if (course.subj && course.crse && course.name) {
+                        const schoolName = subjectSchoolMap.get(course.subj) || 'Uncategorized';
                         courses.push({
                             id: id,
                             name: course.name,
                             subj: course.subj,
                             crse: course.crse,
                             difficulty: getDifficulty(course.crse, course.name),
-                            isHass: hassSubjects.includes(course.subj),
+                            school: schoolName,
+                            isHass: schoolName === 'Humanities, Arts, and Social Sciences',
                             reviews: [] // Initialize empty reviews array
                         });
                     }
                 }
 
-                // 8. Set up the real-time review listener
+                // 9. Set up the real-time review listener
                 // This will also trigger the first data load and re-render
                 setupReviewListener();
 
