@@ -4,10 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QuACKER: The RPI Course Explorer</title>
+    <!-- Favicon Links -->
     <link rel="icon" type="image/x-icon" href="resources/favicon_io/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="resources/favicon_io/favicon-32x32.png">
     <link rel="apple-touch-icon" href="resources/favicon_io/apple-touch-icon.png">
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Set Inter font -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -62,6 +65,7 @@
 
         <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
+            <!-- Left Column: Leaderboard -->
             <div class="lg:col-span-1 bg-gray-800 p-6 rounded-xl shadow-2xl">
                 <div class="flex justify-between items-center border-b border-gray-700 pb-2 mb-4">
                     <h2 class="text-2xl font-semibold text-white">
@@ -74,10 +78,12 @@
                     </select>
                 </div>
                 <ol id="leaderboard-list" class="space-y-3">
+                    <!-- Leaderboard items will be injected here by JavaScript -->
                     <li class="text-gray-400 text-center">Loading leaderboards...</li>
                 </ol>
             </div>
 
+            <!-- Right Column: All Courses & Search -->
             <div class="lg:col-span-2 bg-gray-800 p-6 rounded-xl shadow-2xl">
                 <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2 text-white">
                     All Courses
@@ -89,14 +95,17 @@
                     class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg mb-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                 <div id="all-courses-list" class="max-h-[65vh] overflow-y-auto space-y-3 pr-2">
+                    <!-- Course list will be injected here by JavaScript -->
                     <p class="text-gray-400 text-center">Loading courses...</p>
                 </div>
             </div>
         </main>
     </div>
 
+    <!-- Review Modal -->
     <div id="review-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center p-4 invisible opacity-0 z-50">
         <div id="review-modal-content" class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl border border-gray-700 max-h-[90vh]">
+            <!-- Modal Header -->
             <div class="flex justify-between items-center p-5 border-b border-gray-700">
                 <div>
                     <h2 id="modal-course-name" class="text-2xl font-semibold text-white">Course Name</h2>
@@ -107,8 +116,10 @@
                 </button>
             </div>
 
+            <!-- Modal Body -->
             <div class="p-5 overflow-y-auto max-h-[calc(90vh-140px)] space-y-6">
                 
+                <!-- Course Info Section -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-200 mb-2">Course Information</h3>
                     <p id="modal-course-desc" class="text-sm text-gray-300 mb-3">Loading description...</p>
@@ -118,6 +129,7 @@
                     </p>
                 </div>
 
+                <!-- Student Feedback Section -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">Student Feedback (Averages)</h3>
                     <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
@@ -144,20 +156,23 @@
                     </div>
                 </div>
 
+                <!-- AI Summary Section (Pros & Cons) -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">AI Summary (from reviews)</h3>
-                    <div id="ai-summary-box" class="bg-gray-700/50 p-4 rounded-lg min-h-[100px] flex items-center justify-center">
-                        <p id="ai-summary-text" class="text-gray-300 italic text-sm">No reviews yet. Submit one below to get an AI summary!</p>
-                        <div id="ai-summary-loader" class="loader hidden"></div>
+                    <div id="ai-summary-box" class="bg-gray-700/50 p-4 rounded-lg">
+                        <div id="ai-summary-loader" class="loader hidden mx-auto"></div>
+                        <div id="ai-error-box" class="text-red-400 text-sm hidden"></div>
+                        <!-- Pros and Cons will be rendered here -->
                     </div>
-                    <div id="ai-error-box" class="text-red-400 text-sm mt-2 hidden"></div>
                 </div>
 
+                <!-- Add Review Form -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">Add Your Anonymous Review</h3>
                     <form id="review-form" class="space-y-4">
                         <input type="hidden" id="modal-course-hidden-id">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Left Side of Form -->
                             <div class="space-y-4">
                                 <div>
                                     <label for="review-difficulty" class="block text-sm font-medium text-gray-300">Difficulty (1=Easy, 5=Hard)</label>
@@ -205,6 +220,7 @@
                                     </div>
                                 </div>
                             </div>
+                            <!-- Right Side of Form -->
                             <div class="space-y-4">
                                 <div>
                                     <label for="review-comment" class="block text-sm font-medium text-gray-300">Comments (Optional)</label>
@@ -218,19 +234,23 @@
                     </form>
                 </div>
 
+                <!-- Reviews List -->
                 <div id="reviews-list-section">
-                    <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">All Reviews</h3>
+                    <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">All Reviews (Newest First)</h3>
                     <div id="reviews-list" class="space-y-3">
                         <p class="text-gray-400 text-sm italic">No reviews yet for this course.</p>
-                        </div>
+                        <!-- Reviews will be injected here -->
+                    </div>
                 </div>
 
             </div>
         </div>
     </div>
 
+    <!-- Leaderboard Modal (for large courses) -->
     <div id="leaderboard-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center p-4 invisible opacity-0 z-50">
         <div id="leaderboard-modal-content" class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl border border-gray-700 max-h-[90vh]">
+            <!-- Modal Header -->
             <div class="flex justify-between items-center p-5 border-b border-gray-700">
                 <div>
                     <h2 id="leaderboard-modal-course-name" class="text-2xl font-semibold text-white">Course Name</h2>
@@ -241,7 +261,9 @@
                 </button>
             </div>
 
+            <!-- Modal Body (mirrors review modal) -->
             <div class="p-5 overflow-y-auto max-h-[calc(90vh-140px)] space-y-6">
+                <!-- Course Info Section -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-200 mb-2">Course Information</h3>
                     <p id="leaderboard-modal-course-desc" class="text-sm text-gray-300 mb-3">Loading description...</p>
@@ -251,6 +273,7 @@
                     </p>
                 </div>
 
+                <!-- Student Feedback Section -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">Student Feedback (Averages)</h3>
                     <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
@@ -277,15 +300,17 @@
                     </div>
                 </div>
 
+                 <!-- AI Summary Section (Pros & Cons) -->
                  <div>
                     <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">AI Summary (from reviews)</h3>
-                    <div id="leaderboard-ai-summary-box" class="bg-gray-700/50 p-4 rounded-lg min-h-[100px] flex items-center justify-center">
-                        <p id="leaderboard-ai-summary-text" class="text-gray-300 italic text-sm">No reviews yet. Submit one below to get an AI summary!</p>
-                        <div id="leaderboard-ai-summary-loader" class="loader hidden"></div>
+                    <div id="leaderboard-ai-summary-box" class="bg-gray-700/50 p-4 rounded-lg">
+                        <div id="leaderboard-ai-summary-loader" class="loader hidden mx-auto"></div>
+                        <div id="leaderboard-ai-error-box" class="text-red-400 text-sm hidden"></div>
+                        <!-- Pros and Cons will be rendered here -->
                     </div>
-                    <div id="leaderboard-ai-error-box" class="text-red-400 text-sm mt-2 hidden"></div>
                 </div>
 
+                <!-- "Add Review" Button -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">Add Your Review</h3>
                     <p class="text-sm text-gray-300 mb-3">To add a review, please find this course in the "All Courses" list.</p>
@@ -294,11 +319,13 @@
                     </button>
                 </div>
 
+                <!-- Reviews List -->
                 <div id="leaderboard-reviews-list-section">
-                    <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">All Reviews</h3>
+                    <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">All Reviews (Newest First)</h3>
                     <div id="leaderboard-reviews-list" class="space-y-3">
                         <p class="text-gray-400 text-sm italic">No reviews yet for this course.</p>
-                        </div>
+                        <!-- Reviews will be injected here -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -393,11 +420,14 @@
                     }
                     
                     const prereqData = prereqId ? prereqGraph[prereqId] : null; // Look up "CSCI 1200" in prereqGraph
+                    const hasPrereqs = prereqData && prereqData.prereqs && prereqData.prereqs.length > 0;
 
-                    // Assign tags
+                    // --- FEATURE 2: Add Prereq Tags ---
                     let tags = [];
-                    if (prereqData && prereqData.prereqs && prereqData.prereqs.length > 0) {
+                    if (hasPrereqs) {
                         tags.push('Has Prereqs');
+                    } else {
+                        tags.push('No Prereqs');
                     }
                     
                     return {
@@ -406,7 +436,7 @@
                         subj: course.subj,
                         crse: course.crse,
                         description: course.description || "No description available.",
-                        prereqs: prereqData ? (prereqData.prereqs.join(', ') || 'None listed.') : 'None listed.',
+                        prereqs: hasPrereqs ? prereqData.prereqs.join(', ') : 'None listed.',
                         tags: tags,
                         // Initialize review data (will be populated by Firebase)
                         reviews: [],
@@ -416,7 +446,7 @@
                         avgWorkload: 0.0,
                         avgAttendance: 0,
                         avgGpa: -1,
-                        ai_summary: null, // Add field for cached summary
+                        ai_summary: null, // This will store the {pros: [], cons: []} object
                     };
                 });
                 
@@ -500,7 +530,7 @@
                     course.avgAttendance = (totalAttendance / course.reviewCount) * 100;
                     course.avgGpa = gpaCount > 0 ? (totalGpa / gpaCount) : -1;
 
-                    // --- MODIFICATION: Load the cached summary ---
+                    // Load the cached summary object
                     course.ai_summary = reviewData.ai_summary || null;
                 
                 } else {
@@ -512,8 +542,6 @@
                     course.avgWorkload = 0.0;
                     course.avgAttendance = 0;
                     course.avgGpa = -1;
-
-                    // --- MODIFICATION: Reset cached summary ---
                     course.ai_summary = null;
                 }
             });
@@ -552,11 +580,24 @@
                 return;
             }
 
-            listElement.innerHTML = filteredCourses.map(course => `
+            listElement.innerHTML = filteredCourses.map(course => {
+                // --- FEATURE 2: Create HTML for tags ---
+                const tagsHtml = course.tags.map(tag => {
+                    const color = tag === 'No Prereqs' 
+                        ? 'bg-green-800 text-green-200' 
+                        : 'bg-yellow-800 text-yellow-200';
+                    return `<span class="text-xs font-medium px-2 py-0.5 rounded ${color}">${tag}</span>`;
+                }).join(' ');
+                
+                return `
                 <div class="flex justify-between items-center bg-gray-700/50 p-4 rounded-lg transition-colors hover:bg-gray-700">
                     <div class="flex-grow pr-4 overflow-hidden">
                         <span class="font-semibold text-white block truncate">${course.name}</span>
-                        <span class="text-sm text-gray-400">${course.id} (${course.reviewCount} review${course.reviewCount === 1 ? '' : 's'})</span>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-sm text-gray-400">${course.id} (${course.reviewCount} review${course.reviewCount === 1 ? '' : 's'})</span>
+                            ${tagsHtml}
+                        </div>
+                        <!-- Average Scores -->
                         <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-300">
                             <span>Diff: <strong class="text-green-400">${course.avgDifficulty.toFixed(1)}</strong></span>
                             <span>Useful: <strong class="text-blue-400">${course.avgUsefulness.toFixed(1)}</strong></span>
@@ -573,7 +614,7 @@
                         </button>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         /**
@@ -662,7 +703,7 @@
             document.getElementById('modal-avg-attendance').textContent = `${course.avgAttendance.toFixed(0)}%`;
 
             // Reset AI Summary
-            resetAISummary('ai-summary-text', 'ai-summary-loader', 'ai-error-box');
+            resetAISummary(course, 'ai-summary-box', 'ai-summary-loader', 'ai-error-box');
 
             // Reset Form
             document.getElementById('review-form').reset();
@@ -717,7 +758,7 @@
             document.getElementById('go-to-review-btn').dataset.id = course.id;
 
             // Reset AI Summary
-            resetAISummary('leaderboard-ai-summary-text', 'leaderboard-ai-summary-loader', 'leaderboard-ai-error-box');
+            resetAISummary(course, 'leaderboard-ai-summary-box', 'leaderboard-ai-summary-loader', 'leaderboard-ai-error-box');
             
             // Render Reviews
             renderReviewsList(course.reviews, 'leaderboard-reviews-list');
@@ -742,6 +783,7 @@
 
         /**
          * Renders the list of individual reviews in a modal.
+         * --- FEATURE 1: Sorts reviews by newest first ---
          */
         function renderReviewsList(reviews, elementId) {
             const listElement = document.getElementById(elementId);
@@ -750,8 +792,19 @@
                 return;
             }
 
-            listElement.innerHTML = reviews.map(review => `
+            // Sort reviews by timestamp, newest first
+            const sortedReviews = [...reviews].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            listElement.innerHTML = sortedReviews.map(review => {
+                // Format the timestamp
+                const date = new Date(review.timestamp);
+                const dateString = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                
+                return `
                 <div class="bg-gray-700/50 p-4 rounded-lg">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs text-gray-400">${dateString}</span>
+                    </div>
                     ${review.comment ? `<p class="text-gray-200 mb-2">"${review.comment}"</p>` : '<p class="text-gray-400 italic mb-2">No comment left.</p>'}
                     <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400 border-t border-gray-600 pt-2">
                         <span>Diff: <strong class="text-green-400">${review.difficulty}</strong></span>
@@ -761,7 +814,7 @@
                         <span>Attend: <strong class="text-red-400">${review.attendance === 'yes' ? 'Yes' : 'No'}</strong></span>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         // --- FIREBASE & AI HANDLERS ---
@@ -799,7 +852,6 @@
 
             try {
                 // --- STEP 1: Add the new review ---
-                // This call is correct. It creates the doc/course/reviews array if it doesn't exist.
                 await setDoc(docRef, {
                     [courseId]: {
                         reviews: arrayUnion(review)
@@ -807,9 +859,7 @@
                 }, { merge: true }); 
 
                 // --- STEP 2: Invalidate the cache (THE FIX) ---
-                // We must use updateDoc with dot notation to avoid deleting the reviews array.
-                // This tells Firebase to "reach into" the courseId object and set *only*
-                // the ai_summary field to null, leaving 'reviews' untouched.
+                // Use updateDoc with dot notation to set *only* ai_summary to null.
                 await updateDoc(docRef, {
                     [`${courseId}.ai_summary`]: null
                 });
@@ -827,52 +877,81 @@
         }
 
         /**
-         * Resets the AI summary box to its initial state.
-         * NOW CHECKS FOR CACHE AND *AUTOMATICALLY* GENERATES IF MISSING.
+         * --- FEATURE 3: Renders the Pros & Cons list ---
+         * Helper function to build and inject the Pros/Cons HTML.
          */
-        function resetAISummary(textId, loaderId, errorId) {
-            const textElement = document.getElementById(textId);
+        function renderProsCons(summaryObject, containerId, loaderId, errorId) {
+            const containerElement = document.getElementById(containerId);
             const loaderElement = document.getElementById(loaderId);
             const errorElement = document.getElementById(errorId);
             
-            // Get courseId from either modal
-            const reviewModalId = document.getElementById('modal-course-hidden-id').value;
-            const leaderboardModalId = document.getElementById('go-to-review-btn').dataset.id;
-            const courseId = reviewModalId || leaderboardModalId; 
+            if (!summaryObject || !summaryObject.pros || !summaryObject.cons) {
+                containerElement.innerHTML = `<p class="text-gray-400 italic text-sm">Could not parse AI summary.</p>`;
+                return;
+            }
 
-            const course = allCourses.find(c => c.id === courseId);
+            // Build Pros list
+            let prosHtml = summaryObject.pros.length > 0
+                ? summaryObject.pros.map(pro => `<li class="text-green-300">${pro}</li>`).join('')
+                : '<li class="text-gray-400 italic text-sm">No specific pros mentioned.</li>';
+            
+            // Build Cons list
+            let consHtml = summaryObject.cons.length > 0
+                ? summaryObject.cons.map(con => `<li class="text-red-300">${con}</li>`).join('')
+                : '<li class="text-gray-400 italic text-sm">No specific cons mentioned.</li>';
+
+            // Set the final HTML
+            containerElement.innerHTML = `
+                <div class="space-y-3">
+                    <div>
+                        <h4 class="font-semibold text-gray-200 mb-1">Pros</h4>
+                        <ul class="list-disc list-inside space-y-1 pl-2">
+                            ${prosHtml}
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-gray-200 mb-1">Cons</h4>
+                        <ul class="list-disc list-inside space-y-1 pl-2">
+                            ${consHtml}
+                        </ul>
+                    </div>
+                </div>
+            `;
+            
+            loaderElement.classList.add('hidden');
+            errorElement.classList.add('hidden');
+        }
+
+
+        /**
+         * Resets the AI summary box to its initial state.
+         * NOW CHECKS FOR CACHE AND *AUTOMATICALLY* GENERATES IF MISSING.
+         */
+        function resetAISummary(course, containerId, loaderId, errorId) {
+            const containerElement = document.getElementById(containerId);
+            const loaderElement = document.getElementById(loaderId);
+            const errorElement = document.getElementById(errorId);
+            
             const hasReviews = course && course.reviews && course.reviews.length > 0;
 
             // --- START OF MODIFICATION ---
             if (course && course.ai_summary) {
-                // Case 1: We have a cached summary. Show it.
-                textElement.textContent = course.ai_summary;
-                textElement.classList.remove("italic");
-                textElement.classList.remove('hidden');
-                loaderElement.classList.add('hidden');
-                errorElement.classList.add('hidden');
+                // Case 1: We have a cached summary object. Render it.
+                renderProsCons(course.ai_summary, containerId, loaderId, errorId);
             
             } else if (hasReviews) {
                 // Case 2: No cached summary, BUT we have reviews.
                 // Auto-generate it for the user.
-                textElement.classList.add('hidden');
+                containerElement.innerHTML = ''; // Clear container
                 loaderElement.classList.remove('hidden'); // Show loader
                 errorElement.classList.add('hidden');
                 
-                // Get the correct IDs for the generateSummary function
-                const isReviewModal = (textId === 'ai-summary-text');
-                const tId = isReviewModal ? 'ai-summary-text' : 'leaderboard-ai-summary-text';
-                const lId = isReviewModal ? 'ai-summary-loader' : 'leaderboard-ai-summary-loader';
-                const eId = isReviewModal ? 'ai-error-box' : 'leaderboard-ai-error-box';
-
                 // Call the function to do the work
-                generateSummary(courseId, tId, lId, eId);
+                generateSummary(course, containerId, loaderId, errorId);
 
             } else {
                 // Case 3: No reviews, no summary. Show placeholder.
-                textElement.textContent = "No reviews yet. Submit one to get an AI summary!";
-                textElement.classList.add("italic");
-                textElement.classList.remove('hidden');
+                containerElement.innerHTML = `<p class="text-gray-400 italic text-sm text-center">No reviews yet. Submit one to get an AI summary!</p>`;
                 loaderElement.classList.add('hidden');
                 errorElement.classList.add('hidden');
             }
@@ -880,55 +959,63 @@
         }
 
         /**
-         * Calls the Gemini API to generate a course summary.
-         * Now includes caching logic.
+         * --- FEATURE 3: Calls the Gemini API to generate Pros & Cons JSON ---
+         * Now includes structured JSON caching logic.
          */
-        async function generateSummary(courseId, textId, loaderId, errorId) {
-            const textElement = document.getElementById(textId);
+        async function generateSummary(course, containerId, loaderId, errorId) {
             const loaderElement = document.getElementById(loaderId);
             const errorElement = document.getElementById(errorId);
 
             if (!apiKey || apiKey === "PASTE_YOUR_API_KEY_FROM_AI_STUDIO_HERE") {
                 errorElement.textContent = "AI Summary is not configured. (Missing API Key)";
                 errorElement.classList.remove("hidden");
+                loaderElement.classList.add('hidden');
                 return;
             }
 
-            const course = allCourses.find(c => c.id === courseId);
-
-            // --- START OF MODIFICATION (Caching Check) ---
-            // Check if summary is already cached
+            // Check if summary is already cached (double-check)
             if (course.ai_summary) {
                 console.log("Displaying cached summary.");
-                textElement.textContent = course.ai_summary;
-                textElement.classList.remove("italic");
-                return; // Stop here, no API call needed
+                renderProsCons(course.ai_summary, containerId, loaderId, errorId);
+                return;
             }
-            // --- END OF MODIFICATION ---
 
             const comments = course.reviews
                 .map(r => r.comment)
                 .filter(comment => comment && comment.trim() !== ''); // Get only non-empty comments
 
             if (comments.length === 0) {
-                textElement.textContent = "Not enough comments to generate a summary.";
-                textElement.classList.remove("italic");
+                const containerElement = document.getElementById(containerId);
+                containerElement.innerHTML = `<p class="text-gray-400 italic text-sm text-center">Not enough comments to generate a summary.</p>`;
+                loaderElement.classList.add('hidden');
                 return;
             }
 
-            // Show loader
-            textElement.classList.add('hidden');
-            loaderElement.classList.remove('hidden');
-            errorElement.classList.add('hidden');
-
-            // --- Call Gemini API ---
-            const systemPrompt = "You are a helpful assistant. Read the following student comments about a college course and provide a single, concise paragraph summarizing the key points, common praises, and common complaints. Do not use markdown or bullet points. Start directly with the summary.";
+            // --- Call Gemini API for JSON ---
+            const systemPrompt = "You are a helpful assistant. Read the following student comments about a college course. Extract the key positive points (pros) and negative points (cons). Return your answer *only* as a valid JSON object. Do not add any text before or after the JSON. The JSON object must match this schema: {\"type\": \"object\", \"properties\": {\"pros\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"cons\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}}}";
             const userQuery = "Here are the comments:\n\n- " + comments.join("\n- ");
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
                 systemInstruction: { parts: [{ text: systemPrompt }] },
+                // --- NEW: Ask for JSON response ---
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            "pros": {
+                                type: "ARRAY",
+                                items: { type: "STRING" }
+                            },
+                            "cons": {
+                                type: "ARRAY",
+                                items: { type: "STRING" }
+                            }
+                        }
+                    }
+                }
             };
 
             try {
@@ -943,23 +1030,27 @@
                 }
 
                 const result = await response.json();
-                const summary = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                const summaryText = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
-                if (summary) {
-                    textElement.textContent = summary;
-                    textElement.classList.remove('italic');
+                if (summaryText) {
+                    const summaryObject = JSON.parse(summaryText);
+                    
+                    // Render the new summary
+                    renderProsCons(summaryObject, containerId, loaderId, errorId);
 
-                    // --- START OF MODIFICATION (Save to Firebase) ---
-                    console.log(`Saving new summary for ${courseId} to Firebase...`);
+                    // --- Save the JSON OBJECT to Firebase ---
+                    console.log(`Saving new summary for ${course.id} to Firebase...`);
                     const docPath = `artifacts/${appId}/public/data/reviews`;
                     const docRef = doc(db, docPath, "all_course_reviews");
                     
                     await setDoc(docRef, {
-                        [courseId]: {
-                            ai_summary: summary
+                        [course.id]: {
+                            ai_summary: summaryObject // Save the object
                         }
-                    }, { merge: true }); // Merge: true is critical!
-                    // --- END OF MODIFICATION ---
+                    }, { merge: true });
+
+                    // Update local state
+                    course.ai_summary = summaryObject;
 
                 } else {
                     throw new Error("Invalid response structure from API.");
@@ -969,9 +1060,6 @@
                 console.error("Error generating summary:", error);
                 errorElement.textContent = "Error generating summary. Please try again.";
                 errorElement.classList.remove('hidden');
-            } finally {
-                // Hide loader
-                textElement.classList.remove('hidden');
                 loaderElement.classList.add('hidden');
             }
         }
@@ -1069,6 +1157,8 @@
                 if (e.target.id === 'leaderboard-modal') closeLeaderboardModal(); // Backdrop click
             });
             
+            // --- BUG FIX: Removed leftover event listener ---
+
             document.getElementById('go-to-review-btn').addEventListener('click', (e) => {
                 const courseId = e.target.dataset.id;
                 closeLeaderboardModal();
