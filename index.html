@@ -830,7 +830,7 @@
 
         /**
          * Resets the AI summary box to its initial state.
-         * NOW CHECKS FOR CACHED SUMMARY.
+         * NOW CHECKS FOR CACHE AND *AUTOMATICALLY* GENERATES IF MISSING.
          */
         function resetAISummary(textId, loaderId, errorId) {
             const textElement = document.getElementById(textId);
@@ -840,35 +840,45 @@
             // Get courseId from either modal
             const reviewModalId = document.getElementById('modal-course-hidden-id').value;
             const leaderboardModalId = document.getElementById('go-to-review-btn').dataset.id;
-            const courseId = reviewModalId || leaderboardModalId; // Use the one that's currently active
+            const courseId = reviewModalId || leaderboardModalId; 
 
             const course = allCourses.find(c => c.id === courseId);
             const hasReviews = course && course.reviews && course.reviews.length > 0;
 
             // --- START OF MODIFICATION ---
             if (course && course.ai_summary) {
-                // If we have a cached summary, show it immediately
+                // Case 1: We have a cached summary. Show it.
                 textElement.textContent = course.ai_summary;
                 textElement.classList.remove("italic");
                 textElement.classList.remove('hidden');
                 loaderElement.classList.add('hidden');
                 errorElement.classList.add('hidden');
-                return; // We're done
-            }
-            // --- END OF MODIFICATION ---
+            
+            } else if (hasReviews) {
+                // Case 2: No cached summary, BUT we have reviews.
+                // Auto-generate it for the user.
+                textElement.classList.add('hidden');
+                loaderElement.classList.remove('hidden'); // Show loader
+                errorElement.classList.add('hidden');
+                
+                // Get the correct IDs for the generateSummary function
+                const isReviewModal = (textId === 'ai-summary-text');
+                const tId = isReviewModal ? 'ai-summary-text' : 'leaderboard-ai-summary-text';
+                const lId = isReviewModal ? 'ai-summary-loader' : 'leaderboard-ai-summary-loader';
+                const eId = isReviewModal ? 'ai-error-box' : 'leaderboard-ai-error-box';
 
-            // If no cached summary, show the default placeholder text
-            if (hasReviews) {
-                textElement.textContent = "Click 'Generate Summary' to get an AI summary of all reviews.";
-                textElement.classList.add("italic");
+                // Call the function to do the work
+                generateSummary(courseId, tId, lId, eId);
+
             } else {
+                // Case 3: No reviews, no summary. Show placeholder.
                 textElement.textContent = "No reviews yet. Submit one to get an AI summary!";
                 textElement.classList.add("italic");
+                textElement.classList.remove('hidden');
+                loaderElement.classList.add('hidden');
+                errorElement.classList.add('hidden');
             }
-            
-            textElement.classList.remove('hidden');
-            loaderElement.classList.add('hidden');
-            errorElement.classList.add('hidden');
+            // --- END OF MODIFICATION ---
         }
 
         /**
@@ -1053,20 +1063,14 @@
                 if (e.target.id === 'review-modal') closeReviewModal(); // Backdrop click
             });
             document.getElementById('review-form').addEventListener('submit', handleSubmitReview);
-            document.getElementById('ai-summary-btn').addEventListener('click', (e) => {
-                const courseId = document.getElementById('modal-course-hidden-id').value;
-                generateSummary(courseId, 'ai-summary-text', 'ai-summary-loader', 'ai-error-box');
-            });
+            
             
             // Leaderboard Modal listeners
             document.getElementById('leaderboard-modal-close-btn').addEventListener('click', closeLeaderboardModal);
             document.getElementById('leaderboard-modal').addEventListener('click', (e) => {
                 if (e.target.id === 'leaderboard-modal') closeLeaderboardModal(); // Backdrop click
             });
-            document.getElementById('leaderboard-ai-summary-btn').addEventListener('click', (e) => {
-                const courseId = document.getElementById('go-to-review-btn').dataset.id;
-                generateSummary(courseId, 'leaderboard-ai-summary-text', 'leaderboard-ai-summary-loader', 'leaderboard-ai-error-box');
-            });
+            
             document.getElementById('go-to-review-btn').addEventListener('click', (e) => {
                 const courseId = e.target.dataset.id;
                 closeLeaderboardModal();
