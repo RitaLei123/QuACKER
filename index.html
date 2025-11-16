@@ -67,15 +67,23 @@
             
             <!-- Left Column: Leaderboard -->
             <div class="lg:col-span-1 bg-gray-800 p-6 rounded-xl shadow-2xl">
-                <div class="flex justify-between items-center border-b border-gray-700 pb-2 mb-4">
-                    <h2 class="text-2xl font-semibold text-white">
+                <div class="flex flex-col border-b border-gray-700 pb-2 mb-4">
+                    <h2 class="text-2xl font-semibold text-white mb-2">
                         Leaderboards
                     </h2>
-                    <select id="leaderboard-sort" class="bg-gray-700 text-white text-sm rounded-md p-1 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500">
-                        <option value="usefulness">Most Useful</option>
-                        <option value="difficulty">Easiest</option>
-                        <option value="workload">Lightest Workload</option>
-                    </select>
+                    <div class="flex flex-col space-y-2">
+                        <!-- Dual Filter Controls for Leaderboard -->
+                        <select id="leaderboard-sort" class="bg-gray-700 text-white text-sm rounded-md p-1 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 w-full">
+                            <option value="usefulness">Sort by Most Useful</option>
+                            <option value="difficulty">Sort by Easiest</option>
+                            <option value="workload">Sort by Lightest Workload</option>
+                        </select>
+                        <!-- NEW LEADERBOARD FILTER -->
+                        <select id="leaderboard-filter" class="bg-gray-700 text-white text-sm rounded-md p-1 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 w-full">
+                            <option value="">Filter All</option>
+                            <!-- Options populated by JavaScript -->
+                        </select>
+                    </div>
                 </div>
                 <ol id="leaderboard-list" class="space-y-3">
                     <!-- Leaderboard items will be injected here by JavaScript -->
@@ -96,7 +104,7 @@
                         placeholder="Search by name, subject, or course #" 
                         class="w-full sm:w-2/3 p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
                     >
-                    <!-- NEW SCHOOL FILTER -->
+                    <!-- SCHOOL FILTER (General) -->
                     <select id="school-filter" class="w-full sm:w-1/3 p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500">
                         <option value="">Filter by School...</option>
                         <!-- Options populated by JavaScript -->
@@ -419,20 +427,50 @@
             });
         });
 
+        // --- NEW: Map for specific required tags ---
+        const specificTagsMap = new Map();
+        // HASS Tag Codes
+        ['ARTS', 'COGS', 'COMM', 'ECON', 'GSAS', 'IHSS', 'INQR', 'LANG', 'LITR', 'PHIL', 'PSYC', 'STSO', 'WRIT'].forEach(code => specificTagsMap.set(code, 'HASS'));
+        // SCIENCE Tag Codes
+        ['ASTR', 'BCBP', 'BIOL', 'CHEM', 'CSCI', 'ERTH', 'ISCI', 'PHYS'].forEach(code => specificTagsMap.set(code, 'SCIENCE'));
+        // MATH Tag Codes (as specified: MATH and MATP only)
+        ['MATH', 'MATP'].forEach(code => specificTagsMap.set(code, 'MATH'));
+
+
         /**
          * Populates the School Filter dropdown with unique school names.
+         * NOTE: This also populates the Leaderboard filter with tags and schools.
          */
         function populateSchoolFilter() {
-            const filterElement = document.getElementById('school-filter');
-            if (!filterElement) return;
+            const schoolFilterElement = document.getElementById('school-filter');
+            const leaderboardFilterElement = document.getElementById('leaderboard-filter');
+            if (!schoolFilterElement || !leaderboardFilterElement) return;
 
-            const uniqueSchools = [...new Set(schoolData.map(s => s.name))].sort();
-
-            const optionsHtml = uniqueSchools.map(school => 
+            const schools = schoolData.map(s => s.name).sort();
+            const tags = ['HASS', 'SCIENCE', 'MATH'];
+            
+            // Populate General School Filter
+            const schoolOptionsHtml = schools.map(school => 
                 `<option value="${school}">${school}</option>`
             ).join('');
+            schoolFilterElement.innerHTML = `<option value="">Filter by School...</option>` + schoolOptionsHtml;
+            
+            // Populate Leaderboard Filter with Tags and Schools
+            let leaderboardOptions = [`<option value="">Filter All</option>`];
+            
+            leaderboardOptions.push(`<optgroup label="Core Tags">`);
+            tags.forEach(tag => {
+                leaderboardOptions.push(`<option value="TAG-${tag}">${tag}</option>`);
+            });
+            leaderboardOptions.push(`</optgroup>`);
+            
+            leaderboardOptions.push(`<optgroup label="Schools">`);
+            schools.forEach(school => {
+                leaderboardOptions.push(`<option value="SCHOOL-${school}">${school}</option>`);
+            });
+            leaderboardOptions.push(`</optgroup>`);
 
-            filterElement.innerHTML = `<option value="">Filter by School...</option>` + optionsHtml;
+            leaderboardFilterElement.innerHTML = leaderboardOptions.join('');
         }
 
         // --- CORE DATA & RENDERING LOGIC ---
@@ -465,24 +503,33 @@
                     const course = mergedCatalog[id];
                     
                     let prereqId = null;
+                    const cleanSubj = course.subj.trim().toUpperCase(); // Clean subject code for lookups
+
                     // Safely check and trim subj/crse before creating the key
                     if (course.subj && typeof course.subj === 'string' && course.crse && typeof course.crse === 'string') {
-                        prereqId = `${course.subj.trim()} ${course.crse.trim()}`; // e.g., "CSCI 1200"
+                        prereqId = `${cleanSubj} ${course.crse.trim()}`; // e.g., "CSCI 1200"
                     }
                     
                     const prereqData = prereqId ? prereqGraph[prereqId] : null; // Look up "CSCI 1200" in prereqGraph
                     const hasPrereqs = prereqData && prereqData.prereqs && prereqData.prereqs.length > 0;
 
-                    // 1. Prereq Tag
                     let tags = [];
+                    // 1. Prereq Tag
                     if (hasPrereqs) {
                         tags.push('Has Prereqs');
                     } else {
                         tags.push('No Prereqs');
                     }
                     
-                    // 2. School Name (Stored separately for filtering, not as a tag)
-                    const schoolName = subjectSchoolMap.get(course.subj.trim().toUpperCase());
+                    // --- NEW: Add HASS, SCIENCE, MATH tags if applicable ---
+                    const specificTag = specificTagsMap.get(cleanSubj);
+                    if (specificTag) {
+                        tags.push(specificTag);
+                    }
+                    // --- END NEW TAGGING ---
+
+                    // School Name (Stored separately for filtering)
+                    const schoolName = subjectSchoolMap.get(cleanSubj);
                     
                     return {
                         id: id,
@@ -491,7 +538,7 @@
                         crse: course.crse,
                         description: course.description || "No description available.",
                         prereqs: hasPrereqs ? prereqData.prereqs.join(', ') : 'None listed.',
-                        tags: tags, // Only Prereq tag now
+                        tags: tags, // Now contains Prereq tag + relevant specific tags
                         school: schoolName || 'Uncategorized', // Store school name here
                         // Initialize review data (will be populated by Firebase)
                         reviews: [],
@@ -613,6 +660,7 @@
             // Re-render everything with the new data
             const currentSearch = document.getElementById('search-bar').value;
             renderAllCourses(currentSearch);
+            // Re-render leaderboard using its current sort/filter settings
             renderLeaderboard(document.getElementById('leaderboard-sort').value);
         }
 
@@ -633,7 +681,7 @@
                                                 course.id.toLowerCase().includes(lowerFilter) ||
                                                 course.subj.toLowerCase().includes(lowerFilter);
                 
-                // 2. School Filter
+                // 2. School Filter (Main filter for All Courses list)
                 const schoolMatch = !schoolFilterValue || course.school === schoolFilterValue;
 
                 return searchMatch && schoolMatch;
@@ -651,23 +699,26 @@
             }
 
             listElement.innerHTML = filteredCourses.map(course => {
-                // --- FEATURE 2: Create HTML for tags (only Prereq tag remains) ---
+                // --- FEATURE: Create HTML for all tags (Prereq + Specific tags) ---
                 const tagsHtml = course.tags.map(tag => {
                     let color;
                     // Define colors based on tag type
                     if (tag === 'No Prereqs') {
                         color = 'bg-green-800 text-green-200';
-                    } else if (tag.includes('Prereqs')) {
+                    } else if (tag === 'Has Prereqs') {
                         color = 'bg-yellow-800 text-yellow-200';
+                    } else if (tag === 'HASS') {
+                        color = 'bg-purple-800 text-purple-200';
+                    } else if (tag === 'SCIENCE' || tag === 'MATH') {
+                        color = 'bg-cyan-800 text-cyan-200';
                     } else {
-                        // This case should theoretically not happen now, but keep for safety
                         color = 'bg-gray-800 text-gray-200'; 
                     }
 
                     return `<span class="text-xs font-medium px-2 py-0.5 rounded ${color}" title="${tag}">${tag}</span>`;
                 }).join(' ');
                 
-                // School name displayed normally here
+                // School name displayed separately below the tags
                 const schoolDisplay = course.school ? `<span class="text-xs text-blue-400">${course.school}</span>` : '';
 
                 return `
@@ -700,15 +751,39 @@
         }
 
         /**
-         * Renders the top 10 courses on the leaderboard based on a sort key.
+         * Renders the top 10 courses on the leaderboard based on a sort key and filter.
          * @param {string} [sortBy='usefulness'] - 'usefulness', 'difficulty', or 'workload'.
          */
         function renderLeaderboard(sortBy = 'usefulness') {
             const listElement = document.getElementById('leaderboard-list');
             if (!listElement) return;
 
-            const sortedCourses = [...allCourses]
+            const filterValue = document.getElementById('leaderboard-filter').value;
+            let filterType = '';
+            let filterTerm = '';
+
+            if (filterValue.startsWith('TAG-')) {
+                filterType = 'TAG';
+                filterTerm = filterValue.substring(4);
+            } else if (filterValue.startsWith('SCHOOL-')) {
+                filterType = 'SCHOOL';
+                filterTerm = filterValue.substring(7);
+            }
+
+            const filteredCourses = allCourses
                 .filter(c => c.reviewCount > 0) // Only show courses with reviews
+                .filter(course => {
+                    if (!filterValue) return true; // Show all if no filter selected
+
+                    if (filterType === 'TAG') {
+                        // Check if the course's tags array includes the specified core tag (HASS, SCIENCE, MATH)
+                        return course.tags.includes(filterTerm);
+                    } else if (filterType === 'SCHOOL') {
+                        // Check if the course belongs to the specified school
+                        return course.school === filterTerm;
+                    }
+                    return true;
+                })
                 .sort((a, b) => {
                     switch (sortBy) {
                         case 'difficulty':
@@ -722,12 +797,12 @@
                 })
                 .slice(0, 10);
 
-            if (sortedCourses.length === 0) {
-                listElement.innerHTML = `<p class="text-gray-400 text-center">No reviews yet! Be the first.</p>`;
+            if (filteredCourses.length === 0) {
+                listElement.innerHTML = `<p class="text-gray-400 text-center">No reviewed courses match the current filter.</p>`;
                 return;
             }
 
-            listElement.innerHTML = sortedCourses.map((course, index) => {
+            listElement.innerHTML = filteredCourses.map((course, index) => {
                 let score, scoreColor;
                 switch (sortBy) {
                     case 'difficulty':
@@ -1254,6 +1329,10 @@
             
             // Leaderboard sort
             document.getElementById('leaderboard-sort').addEventListener('change', (e) => renderLeaderboard(e.target.value));
+            
+            // NEW Leaderboard filter listener
+            document.getElementById('leaderboard-filter').addEventListener('change', (e) => renderLeaderboard(document.getElementById('leaderboard-sort').value));
+
 
             // Clicks on the main course list
             document.getElementById('all-courses-list').addEventListener('click', (e) => {
