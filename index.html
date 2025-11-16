@@ -116,7 +116,7 @@
                         <option value="">Filter by School...</option>
                         <!-- Options populated by JavaScript -->
                     </select>
-                    <!-- CORE TAG FILTER (NEW) -->
+                    <!-- CORE TAG FILTER -->
                     <select id="core-tag-filter" class="col-span-full md:col-span-1 p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500">
                         <option value="">Filter by Core Tag...</option>
                         <!-- Options populated by JavaScript -->
@@ -367,7 +367,7 @@
         // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, collection, onSnapshot, setDoc, updateDoc, arrayUnion, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, collection, onSnapshot, setDoc, updateDoc, arrayUnion, arrayRemove, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- CONFIG & GLOBAL STATE ---
 
@@ -447,14 +447,14 @@
 
 
         /**
-         * Populates the School Filter dropdowns.
+         * Populates the filter dropdowns.
          */
         function populateSchoolFilter() {
             const schoolFilterElement = document.getElementById('school-filter');
             const leaderboardFilterElement = document.getElementById('leaderboard-filter');
-            if (!schoolFilterElement || !leaderboardFilterElement) return;
-
             const coreTagFilterElement = document.getElementById('core-tag-filter');
+
+            if (!schoolFilterElement || !leaderboardFilterElement || !coreTagFilterElement) return;
 
             const schools = schoolData.map(s => s.name).sort();
             const tags = ['HASS', 'SCIENCE', 'MATH'];
@@ -465,7 +465,7 @@
             ).join('');
             schoolFilterElement.innerHTML = `<option value="">Filter by School...</option>` + schoolOptionsHtml;
 
-            // Populate Core Tag Filter (NEW)
+            // Populate Core Tag Filter
             const coreTagOptionsHtml = tags.map(tag => 
                 `<option value="${tag}">${tag}</option>`
             ).join('');
@@ -526,16 +526,13 @@
                     const hasPrereqs = prereqData && prereqData.prereqs && prereqData.prereqs.length > 0;
 
                     let tags = [];
-                    // 1. Prereq Tag
                     tags.push(hasPrereqs ? 'Has Prereqs' : 'No Prereqs');
                     
-                    // 2. Add HASS, SCIENCE, MATH tags if applicable
                     const specificTag = specificTagsMap.get(cleanSubj);
                     if (specificTag) {
                         tags.push(specificTag);
                     }
 
-                    // School Name
                     const schoolName = subjectSchoolMap.get(cleanSubj);
                     
                     return {
@@ -547,7 +544,6 @@
                         prereqs: hasPrereqs ? prereqData.prereqs.join(', ') : 'None listed.',
                         tags: tags, 
                         school: schoolName || 'Uncategorized',
-                        // Initialize review data (will be populated by Firebase)
                         reviews: [],
                         reviewCount: 0,
                         avgDifficulty: 0.0,
@@ -682,7 +678,7 @@
                 // 2. School Filter
                 const schoolMatch = !schoolFilterValue || course.school === schoolFilterValue;
 
-                // 3. Core Tag Filter (NEW)
+                // 3. Core Tag Filter
                 const coreTagMatch = !coreTagFilterValue || course.tags.includes(coreTagFilterValue);
 
                 return searchMatch && schoolMatch && coreTagMatch;
@@ -947,7 +943,7 @@
         }
 
         /**
-         * Renders the list of individual reviews in a modal (Newest First).
+         * Renders the list of individual reviews in a modal (Newest First), including action buttons.
          */
         function renderReviewsList(reviews, elementId) {
             const listElement = document.getElementById(elementId);
@@ -958,11 +954,37 @@
 
             // Sort reviews by timestamp, newest first
             const sortedReviews = [...reviews].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            const courseId = document.getElementById('modal-course-hidden-id').value || document.getElementById('go-to-review-btn').dataset.id;
 
-            listElement.innerHTML = sortedReviews.map(review => {
+
+            listElement.innerHTML = sortedReviews.map((review, index) => {
                 // Format the timestamp
                 const date = new Date(review.timestamp);
                 const dateString = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                
+                // Check if the current user owns this review
+                const ownsReview = review.userId === userId;
+
+                // Pass the index and course ID for deletion/editing
+                const actionsHtml = ownsReview ? `
+                    <div class="flex space-x-2 mt-2">
+                        <button 
+                            class="edit-review-btn text-xs text-blue-400 hover:text-blue-300 font-medium"
+                            data-index="${index}"
+                            data-course-id="${courseId}"
+                        >
+                            Edit
+                        </button>
+                        <button 
+                            class="delete-review-btn text-xs text-red-500 hover:text-red-400 font-medium"
+                            data-index="${index}"
+                            data-course-id="${courseId}"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                ` : '';
                 
                 return `
                 <div class="bg-gray-700/50 p-4 rounded-lg">
@@ -970,7 +992,8 @@
                         <span class="text-xs text-gray-400">${dateString}</span>
                     </div>
                     ${review.comment ? `<p class="text-gray-200 mb-2">"${review.comment}"</p>` : '<p class="text-gray-400 italic mb-2">No comment left.</p>'}
-                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400 border-t border-gray-600 pt-2">
+                    ${actionsHtml}
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400 border-t border-gray-600 pt-2 mt-2">
                         <span>Diff: <strong class="text-green-400">${review.difficulty}</strong></span>
                         <span>Useful: <strong class="text-blue-400">${review.usefulness}</strong></span>
                         <span>Work: <strong class="text-yellow-400">${review.workload}</strong></span>
@@ -979,7 +1002,75 @@
                     </div>
                 </div>
             `}).join('');
+            
+            // Re-attach listeners for dynamically added buttons
+            const reviewsListElement = document.getElementById(elementId);
+            reviewsListElement.querySelectorAll('.delete-review-btn').forEach(button => {
+                button.addEventListener('click', handleDeleteReviewClick);
+            });
+            // reviewsListElement.querySelectorAll('.edit-review-btn').forEach(button => {
+            //     button.addEventListener('click', handleEditReviewClick); // Placeholder
+            // });
         }
+        
+        /**
+         * Placeholder for Edit functionality (Advanced feature, not fully implemented here)
+         */
+        // function handleEditReviewClick(event) {
+        //     const button = event.target;
+        //     const index = parseInt(button.dataset.index);
+        //     const courseId = button.dataset.courseId;
+        //     alert(`Editing review at index ${index} for ${courseId}. (Requires re-populating the form, skipping for now)`);
+        // }
+
+
+        /**
+         * Event handler for the Delete button.
+         */
+        async function handleDeleteReviewClick(event) {
+            const button = event.target;
+            const reviewIndex = parseInt(button.dataset.index);
+            const courseId = button.dataset.courseId;
+            
+            // ⚠️ Safety Check: Since we cannot use confirm(), we rely on user clicking.
+            button.disabled = true;
+            button.textContent = 'Deleting...';
+            
+            // 1. Find the local review object to delete
+            const course = allCourses.find(c => c.id === courseId);
+            if (!course || !course.reviews[reviewIndex]) {
+                console.error("Review not found for deletion.");
+                return;
+            }
+            
+            const reviewToDelete = course.reviews[reviewIndex];
+            
+            // 2. Perform the delete operation (atomically remove from the array)
+            const docPath = `artifacts/${appId}/public/data/reviews`;
+            const docRef = doc(db, docPath, "all_course_reviews");
+            
+            try {
+                // Remove the specific review object from the reviews array
+                await updateDoc(docRef, {
+                    [`${courseId}.reviews`]: arrayRemove(reviewToDelete)
+                });
+                
+                // 3. Invalidate the AI cache since the reviews have changed
+                await updateDoc(docRef, {
+                    [`${courseId}.ai_summary`]: null
+                });
+
+                console.log(`Review deleted for ${courseId}`);
+                // The onSnapshot listener will handle the re-render automatically.
+
+            } catch (error) {
+                console.error("Error deleting review:", error);
+                alert("There was an error deleting your review.");
+                button.disabled = false;
+                button.textContent = 'Delete';
+            }
+        }
+
 
         // --- FIREBASE & AI HANDLERS ---
 
@@ -1006,7 +1097,8 @@
                 grade: document.getElementById('review-grade').value || null,
                 attendance: document.querySelector('input[name="review-attendance"]:checked').value,
                 comment: document.getElementById('review-comment').value.trim() || null,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                userId: userId // <-- NEW: Include the current user's ID
             };
 
             // Path to the document
