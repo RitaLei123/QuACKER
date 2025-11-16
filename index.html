@@ -30,10 +30,10 @@
             background: #6b7280; /* gray-500 */
         }
         /* Style for the modal */
-        #review-modal, #leaderboard-modal {
+        #review-modal, #leaderboard-modal, #confirm-modal {
             transition: opacity 0.25s ease, visibility 0.25s ease;
         }
-        #review-modal-content, #leaderboard-modal-content {
+        #review-modal-content, #leaderboard-modal-content, #confirm-modal-content {
             transition: transform 0.25s ease;
             transform: scale(0.95);
         }
@@ -390,6 +390,22 @@
         </div>
     </div>
 
+    <!-- NEW: Confirmation Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center p-4 invisible opacity-0 z-50">
+        <div id="confirm-modal-content" class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm border border-gray-700 p-6">
+            <h3 class="text-lg font-semibold text-white mb-4">Are you sure?</h3>
+            <p class="text-gray-300 text-sm mb-6">This action cannot be undone. Do you really want to delete this review?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="confirm-cancel-btn" class="bg-gray-700 text-white text-sm font-medium py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors">
+                    Cancel
+                </button>
+                <button id="confirm-delete-btn" class="bg-red-600 text-white text-sm font-medium py-2 px-4 rounded-lg hover:bg-red-700 transition-colors">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     <script type="module">
         // Import Firebase modules
@@ -461,7 +477,7 @@
             { "name": "Engineering", "depts": [ { "code": "BMED", "name": "Biomedical Engineering" }, { "code": "CHME", "name": "Chemical Engineering" }, { "code": "CIVL", "name": "Civil Engineering" }, { "code": "ECSE", "name": "Electrical, Computer, and Systems Engineering" }, { "code": "ENGR", "name": "General Engineering" }, { "code": "ENVE", "name": "Environmental Engineering" }, { "code": "ESCI", "name": "Engineering Science" }, { "code": "ISYE", "name": "Industrial and Systems Engineering" }, { "code": "MANE", "name": "Mechanical, Aerospace, and Nuclear Engineering" }, { "code": "MTLE", "name": "Materials Science and Engineering" } ] },
             { "name": "Architecture", "depts": [ { "code": "ARCH", "name": "Architecture" }, { "code": "LGHT", "name": "Lighting" } ] },
             { "name": "ITWS", "depts": [ { "code": "ITWS", "name": "Information Technology and Web Science" } ] },
-            { "name": "Science", "depts": [ { "code": "ASTR", "name": "Astronomy" }, { "code": "BCBP", "name": "Biochemistry and Biophysics" }, { "code": "BIOL", "name": "Biology" }, { "code": "CHEM", "name": "Chemistry" }, { "code": "CSCI", "name": "Computer Science" }, { "code": "ERTH", "name": "Earth and Environmental Science" }, { "code": "ISCI", "name": "Interdisciplinary Science" }, { "code": "MATH", "name": "Mathematics" }, { "code": "MATP", "name": "Mathematical Programming, Probability, and Statistics" }, { "code": "PHYS", "name": "Physics" } ] },
+            { "name": "Science", "depts": [ { "code": "ASTR", "name": "Astronomy" }, { "code": "BCBP", "name": "Biochemistry and Biophysics" }, { "code":BIOL", "name": "Biology" }, { "code": "CHEM", "name": "Chemistry" }, { "code": "CSCI", "name": "Computer Science" }, { "code": "ERTH", "name": "Earth and Environmental Science" }, { "code": "ISCI", "name": "Interdisciplinary Science" }, { "code": "MATH", "name": "Mathematics" }, { "code": "MATP", "name": "Mathematical Programming, Probability, and Statistics" }, { "code": "PHYS", "name": "Physics" } ] },
             { "name": "Management", "depts": [ { "code": "BUSN", "name": "Business (H)" }, { "code": "MGMT", "name": "Management" } ] },
             { "name": "Uncategorized", "depts": [ { "code": "ILEA", "name": "Independent Learning Exper" } ] }
         ];
@@ -941,6 +957,42 @@
             const currentSearch = document.getElementById('search-bar').value;
             renderAllCourses(currentSearch);
             renderLeaderboard(document.getElementById('leaderboard-sort').value);
+
+            // --- FIX: Refresh open modal on data change ---
+            const reviewModal = document.getElementById('review-modal');
+            if (!reviewModal.classList.contains('invisible')) {
+                const courseId = document.getElementById('modal-course-hidden-id').value;
+                if (courseId) {
+                    const course = allCourses.find(c => c.id === courseId);
+                    if (course) {
+                        // Just re-render the reviews list, as that's what changed
+                        renderReviewsList(course.reviews, 'reviews-list', course.id, true); // Show actions
+                        // Also update the averages
+                        document.getElementById('modal-avg-difficulty').textContent = course.avgDifficulty.toFixed(1);
+                        document.getElementById('modal-avg-usefulness').textContent = course.avgUsefulness.toFixed(1);
+                        document.getElementById('modal-avg-workload').textContent = course.avgWorkload.toFixed(1);
+                        document.getElementById('modal-avg-grade').textContent = gpaToGrade(course.avgGpa);
+                        document.getElementById('modal-avg-attendance').textContent = `${course.avgAttendance.toFixed(0)}%`;
+                    }
+                }
+            }
+            // Do the same for the leaderboard modal
+            const leaderboardModal = document.getElementById('leaderboard-modal');
+            if (!leaderboardModal.classList.contains('invisible')) {
+                const courseId = document.getElementById('leaderboard-modal-course-id').textContent;
+                if (courseId) {
+                    const course = allCourses.find(c => c.id === courseId);
+                    if (course) {
+                        renderReviewsList(course.reviews, 'leaderboard-reviews-list', course.id, false); // Hide actions
+                        // Also update the averages
+                        document.getElementById('leaderboard-modal-avg-difficulty').textContent = course.avgDifficulty.toFixed(1);
+                        document.getElementById('leaderboard-modal-avg-usefulness').textContent = course.avgUsefulness.toFixed(1);
+                        document.getElementById('leaderboard-modal-avg-workload').textContent = course.avgWorkload.toFixed(1);
+                        document.getElementById('leaderboard-modal-avg-grade').textContent = gpaToGrade(course.avgGpa);
+                        document.getElementById('leaderboard-modal-avg-attendance').textContent = `${course.avgAttendance.toFixed(0)}%`;
+                    }
+                }
+            }
         }
 
         /**
@@ -1246,8 +1298,8 @@
 
             // Reset Form and render reviews
             resetReviewForm();
-            // FIX: Pass course.id directly into the function
-            renderReviewsList(course.reviews, 'reviews-list', course.id);
+            // FIX: Pass course.id and showActions=true
+            renderReviewsList(course.reviews, 'reviews-list', course.id, true);
 
             // --- Show Modal ---
             const modal = document.getElementById('review-modal');
@@ -1299,8 +1351,8 @@
             document.getElementById('go-to-review-btn').dataset.id = course.id;
             
             // Render Reviews
-            // FIX: Pass course.id directly into the function
-            renderReviewsList(course.reviews, 'leaderboard-reviews-list', course.id);
+            // FIX: Pass course.id and showActions=false
+            renderReviewsList(course.reviews, 'leaderboard-reviews-list', course.id, false);
             
             // --- Show Modal ---
             const modal = document.getElementById('leaderboard-modal');
@@ -1319,6 +1371,23 @@
             // Clear dataset ID on close
             document.getElementById('go-to-review-btn').dataset.id = "";
         }
+
+        // --- NEW: Confirmation Modal Controls ---
+        function openConfirmModal() {
+            const modal = document.getElementById('confirm-modal');
+            const modalContent = document.getElementById('confirm-modal-content');
+            modal.classList.remove('invisible', 'opacity-0');
+            modalContent.style.transform = 'scale(1)';
+        }
+
+        function closeConfirmModal() {
+            const modal = document.getElementById('confirm-modal');
+            const modalContent = document.getElementById('confirm-modal-content');
+            modal.classList.add('opacity-0');
+            modalContent.style.transform = 'scale(0.95)';
+            setTimeout(() => modal.classList.add('invisible'), 250);
+        }
+        // --- END NEW ---
 
         /**
          * Populates the form with existing review data for editing.
@@ -1366,15 +1435,37 @@
         }
 
         /**
-         * Event handler for the Delete button.
+         * Event handler for the Delete button. (Now opens confirm modal)
          */
-        async function handleDeleteReviewClick(event) {
+        function handleDeleteReviewClick(event) {
             const button = event.target.closest('.delete-review-btn');
             const reviewId = button.dataset.reviewId;
             const courseId = button.dataset.courseId;
             
-            button.disabled = true;
-            button.textContent = 'Deleting...';
+            // Store data on the confirm button
+            const confirmBtn = document.getElementById('confirm-delete-btn');
+            confirmBtn.dataset.reviewId = reviewId;
+            confirmBtn.dataset.courseId = courseId;
+            
+            openConfirmModal();
+        }
+
+        /**
+         * NEW: Executes the actual deletion after confirmation.
+         */
+        async function executeDeleteReview() {
+            const confirmBtn = document.getElementById('confirm-delete-btn');
+            const reviewId = confirmBtn.dataset.reviewId;
+            const courseId = confirmBtn.dataset.courseId;
+
+            if (!reviewId || !courseId) {
+                console.error("Delete error: Missing reviewId or courseId");
+                return;
+            }
+
+            // Disable button
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'Deleting...';
             
             const course = allCourses.find(c => c.id === courseId);
             if (!course) {
@@ -1397,13 +1488,19 @@
                 }, { merge: true });
 
                 console.log(`Review deleted for ${courseId}`);
+                // The onSnapshot listener will handle the UI update automatically.
                 
             } catch (error) {
                 console.error("Error deleting review:", error);
-                // Use custom message box instead of alert()
                 console.error("There was an error deleting your review.");
-                button.disabled = false;
-                button.textContent = 'Delete';
+            } finally {
+                // Reset and close
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Delete';
+                closeConfirmModal();
+                // Clear data
+                delete confirmBtn.dataset.reviewId;
+                delete confirmBtn.dataset.courseId;
             }
         }
 
@@ -1411,7 +1508,7 @@
         /**
          * Renders the list of individual reviews in a modal (Newest First), including action buttons.
          */
-        function renderReviewsList(reviews, elementId, courseId) { // FIX: Added courseId parameter
+        function renderReviewsList(reviews, elementId, courseId, showActions) { // FIX: Added courseId and showActions
             const listElement = document.getElementById(elementId);
             if (!reviews || reviews.length === 0) {
                 listElement.innerHTML = `<p class="text-gray-400 text-sm italic">No reviews yet for this course.</p>`;
@@ -1421,18 +1518,18 @@
             // Sort reviews by timestamp, newest first
             const sortedReviews = [...reviews].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             
-            // REMOVED: const courseId = ... (No longer need to read from DOM)
-
             listElement.innerHTML = sortedReviews.map((review, index) => {
                 // Format the timestamp
                 const date = new Date(review.timestamp);
                 const dateString = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                 
-                // Check if the current user owns this review AND if the review has a unique ID (for newly created reviews)
+                // Check if the current user owns this review AND if the review has a unique ID
                 const ownsReview = review.userId === userId && review.reviewId;
+                // FIX: Check if actions should be shown
+                const showButtons = ownsReview && showActions;
 
                 // Use review.reviewId for buttons, since array index is unreliable
-                const actionsHtml = ownsReview ? `
+                const actionsHtml = showButtons ? `
                     <div class="flex space-x-2 mt-2">
                         <button 
                             class="edit-review-btn text-xs text-blue-400 hover:text-blue-300 font-medium"
@@ -1473,9 +1570,6 @@
                     </div>
                 </div>
             `}).join('');
-            
-            // Re-attach listeners for dynamically added buttons
-            // REMOVED: This is now handled by event delegation in init()
         }
 
 
@@ -1554,6 +1648,7 @@
                 }
                 
                 closeReviewModal();
+                // The onSnapshot listener will handle UI updates.
 
             } catch (error) {
                 console.error("Error saving review:", error);
@@ -1692,6 +1787,14 @@
                 openReviewModal(courseId);
             });
 
+            // --- NEW: Confirmation Modal Listeners ---
+            document.getElementById('confirm-cancel-btn').addEventListener('click', closeConfirmModal);
+            document.getElementById('confirm-delete-btn').addEventListener('click', executeDeleteReview);
+            document.getElementById('confirm-modal').addEventListener('click', (e) => {
+                if (e.target.id === 'confirm-modal') closeConfirmModal();
+            });
+
+
             // --- NEW: Event Delegation for dynamic review buttons ---
             // Handles clicks on the "Edit" and "Delete" buttons in the review list
             const reviewsList = document.getElementById('reviews-list');
@@ -1712,7 +1815,6 @@
             }
             
             // Do the same for the leaderboard review list
-            // FIX: Removed this redundant listener.
             const leaderboardReviewsList = document.getElementById('leaderboard-reviews-list');
             if (leaderboardReviewsList) {
                 // This list has no buttons, so no listener is needed.
