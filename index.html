@@ -147,6 +147,7 @@
                     <h3 class="text-lg font-semibold text-gray-200 mb-3 border-t border-gray-700 pt-6">Add Your Review</h3>
                     <form id="review-form" class="space-y-4">
                         <input type="hidden" id="modal-course-hidden-id">
+                        <input type="hidden" id="editing-review-id"> <!-- Used to track if we are editing -->
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <label for="review-easiness" class="block text-sm font-medium text-gray-300">Easiness (1-5)</label>
@@ -196,7 +197,7 @@
         // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, onSnapshot, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, setLogLevel, doc, deleteDoc, updateDoc } from "https/www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- GLOBAL STATE ---
         let courses = []; // This will hold all courses from catalog.json
@@ -472,19 +473,37 @@
                 const sortedReviews = [...course.reviews].sort((a, b) => {
                     if (a.createdAt && b.createdAt) {
                         // Firestore timestamps can be objects, convert them
-                        const dateA = a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-                        const dateB = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+                        const dateA = a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt.seconds * 1000);
+                        const dateB = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt.seconds * 1000);
                         return dateB - dateA;
                     }
                     return 0;
                 });
 
-                commentsList.innerHTML = sortedReviews.map(review => `
+                commentsList.innerHTML = sortedReviews.map(review => {
+                    // Format the date
+                    let reviewDate = '';
+                    if (review.createdAt) {
+                        const date = review.createdAt.toDate ? review.createdAt.toDate() : new Date(review.createdAt.seconds * 1000);
+                        reviewDate = date.toLocaleDateString();
+                    }
+
+                    return `
                     <div class="bg-gray-700 p-3 rounded-lg">
                         <p class="text-white text-sm mb-2">${review.comment || 'No comment provided.'}</p>
-                        <span class="text-xs text-gray-400">
-                            Professor: <strong class="text-gray-300">${review.professor || 'N/A'}</strong>
-                        </span>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-gray-400">
+                                Professor: <strong class="text-gray-300">${review.professor || 'N/A'}</strong>
+                                ${reviewDate ? `| <span class="italic">${reviewDate}</span>` : ''}
+                            </span>
+                            <!-- Show buttons only if the review userId matches the current user's ID -->
+                            ${review.userId === userId ? `
+                                <div class="flex gap-2 flex-shrink-0 ml-2">
+                                    <button class="edit-review-btn text-xs font-medium text-blue-400 hover:text-blue-300 p-1" data-review-id="${review.id}" aria-label="Edit review">Edit</button>
+                                    <button class="delete-review-btn text-xs font-medium text-red-400 hover:text-red-300 p-1" data-review-id="${review.id}" aria-label="Delete review">Delete</button>
+                                </div>
+                            ` : ''}
+                        </div>
                         <div class="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs">
                             <span class="text-green-300">Easiness: ${review.easiness}</span>
                             <span class="text-blue-300">Usefulness: ${review.usefulness}</span>
@@ -514,6 +533,14 @@
             // Wait for transition to finish before hiding
             setTimeout(() => {
                 modal.classList.add('invisible');
+
+                // Also reset the form in case we were editing
+                document.getElementById('review-form').reset();
+                document.querySelector('input[name="review-attendance"][value="no"]').checked = true;
+                document.getElementById('editing-review-id').value = '';
+                const submitBtn = document.getElementById('submit-review-btn');
+                submitBtn.textContent = 'Submit Review';
+                submitBtn.disabled = false;
             }, 250);
         }
 
@@ -521,10 +548,12 @@
             event.preventDefault();
             const submitBtn = document.getElementById('submit-review-btn');
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Submitting...';
+
+            const editingReviewId = document.getElementById('editing-review-id').value;
+            submitBtn.textContent = editingReviewId ? 'Updating...' : 'Submitting...';
             
             // Get data from form
-            const review = {
+            const reviewData = {
                 courseId: document.getElementById('modal-course-hidden-id').value,
                 easiness: parseInt(document.getElementById('review-easiness').value),
                 usefulness: parseInt(document.getElementById('review-usefulness').value),
@@ -532,21 +561,30 @@
                 attendance: document.querySelector('input[name="review-attendance"]:checked').value,
                 professor: document.getElementById('review-professor').value || '',
                 comment: document.getElementById('review-comment').value,
-                createdAt: new Date(),
-                userId: userId // Add user ID to the review
+                userId: userId // Always include userId
             };
 
             try {
-                // Save the new review to Firestore
-                await addDoc(reviewsCollection, review);
+                if (editingReviewId) {
+                    // This is an UPDATE
+                    const reviewRef = doc(db, "reviews", editingReviewId);
+                    // Add an 'updatedAt' timestamp
+                    reviewData.updatedAt = new Date();
+                    await updateDoc(reviewRef, reviewData);
+                } else {
+                    // This is a NEW review
+                    // Add a 'createdAt' timestamp
+                    reviewData.createdAt = new Date();
+                    await addDoc(reviewsCollection, reviewData);
+                }
+
                 // The onSnapshot listener will automatically update the UI
-                closeReviewModal();
+                closeReviewModal(); // This will also reset the form
             } catch (error) {
-                console.error("Error adding document: ", error);
+                console.error("Error saving document: ", error);
                 alert("Could not save your review. Please try again.");
-            } finally {
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Submit Review';
+                submitBtn.textContent = editingReviewId ? 'Update Review' : 'Submit Review';
             }
         }
 
@@ -582,7 +620,8 @@
             onSnapshot(q, (querySnapshot) => {
                 const allReviews = [];
                 querySnapshot.forEach((doc) => {
-                    allReviews.push(doc.data());
+                    // Push both the doc ID and the data
+                    allReviews.push({ id: doc.id, ...doc.data() });
                 });
 
                 // Recalculate all averages with the fresh data
@@ -616,6 +655,7 @@
             const leaderboardSort = document.getElementById('leaderboard-sort');
             const modalCloseBtn = document.getElementById('modal-close-btn');
             const modal = document.getElementById('review-modal');
+            const modalContent = document.getElementById('review-modal-content'); // For event bubbling
             const reviewForm = document.getElementById('review-form');
 
             // 2. Set up event listeners
@@ -627,6 +667,8 @@
             modal.addEventListener('click', (e) => {
                 if (e.target.id === 'review-modal') closeReviewModal();
             });
+            // Listen for clicks inside the modal body for edit/delete
+            modalContent.addEventListener('click', handleModalClicks);
             reviewForm.addEventListener('submit', handleSubmitReview);
             
             // 3. Set initial loading state
@@ -686,6 +728,74 @@
                 `;
                 document.getElementById('all-courses-list').innerHTML = errorMsg;
                 document.getElementById('leaderboard-list').innerHTML = `<p class="text-red-300 text-center p-4">Database connection failed.</p>`;
+            }
+        }
+
+        /**
+         * Handles clicks inside the modal, specifically for Edit and Delete buttons.
+         * Uses event bubbling.
+         */
+        async function handleModalClicks(event) {
+            const target = event.target;
+
+            // Handle DELETE button click
+            if (target.classList.contains('delete-review-btn')) {
+                const reviewId = target.dataset.reviewId;
+                
+                // Simple confirmation: change text, require second click
+                if (target.textContent === 'Confirm?') {
+                    try {
+                        target.disabled = true;
+                        target.textContent = 'Deleting...';
+                        const reviewRef = doc(db, "reviews", reviewId);
+                        await deleteDoc(reviewRef);
+                        // onSnapshot will handle the UI update
+                    } catch (error) {
+                        console.error("Error deleting review: ", error);
+                        alert("Could not delete the review. Please try again.");
+                        target.textContent = 'Delete';
+                        target.disabled = false;
+                    }
+                } else {
+                    // Reset all other delete buttons
+                    document.querySelectorAll('.delete-review-btn').forEach(btn => {
+                        if (btn !== target) btn.textContent = 'Delete';
+                    });
+                    // Set this button to confirm
+                    target.textContent = 'Confirm?';
+                }
+            }
+
+            // Handle EDIT button click
+            if (target.classList.contains('edit-review-btn')) {
+                const reviewId = target.dataset.reviewId;
+                
+                // Find the course (from modal) and then the review
+                const courseId = document.getElementById('modal-course-hidden-id').value;
+                const course = courses.find(c => c.id === courseId);
+                if (!course) return;
+
+                const review = course.reviews.find(r => r.id === reviewId);
+                if (!review) return;
+
+                // Populate the form
+                document.getElementById('review-easiness').value = review.easiness;
+                document.getElementById('review-usefulness').value = review.usefulness;
+                document.getElementById('review-workload').value = review.workload;
+                // Handle radio button
+                const attendanceValue = review.attendance || 'no'; // Default to 'no' if not set
+                document.querySelector(`input[name="review-attendance"][value="${attendanceValue}"]`).checked = true;
+                document.getElementById('review-professor').value = review.professor || '';
+                document.getElementById('review-comment').value = review.comment || '';
+                
+                // Set the editing ID
+                document.getElementById('editing-review-id').value = reviewId;
+                
+                // Change button text
+                document.getElementById('submit-review-btn').textContent = 'Update Review';
+                
+                // Scroll to the form
+                document.getElementById('review-form').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         }
 
