@@ -198,9 +198,10 @@
 
                 <!-- Add Review Form -->
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">Add Your Anonymous Review</h3>
+                    <h3 id="review-form-title" class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">Add Your Anonymous Review</h3>
                     <form id="review-form" class="space-y-4">
                         <input type="hidden" id="modal-course-hidden-id">
+                        <input type="hidden" id="editing-review-id"> <!-- NEW HIDDEN FIELD FOR EDITING -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <!-- Left Side of Form -->
                             <div class="space-y-4">
@@ -252,9 +253,14 @@
                             </div>
                             <!-- Right Side of Form -->
                             <div class="space-y-4">
+                                <!-- NEW: Professor Input -->
+                                <div>
+                                    <label for="review-professor" class="block text-sm font-medium text-gray-300">Professor (Optional)</label>
+                                    <input type="text" id="review-professor" class="w-full p-2 mt-1 bg-gray-700 border border-gray-600 rounded-md text-white" placeholder="e.g., Professor Smith">
+                                </div>
                                 <div>
                                     <label for="review-comment" class="block text-sm font-medium text-gray-300">Comments (Optional)</label>
-                                    <textarea id="review-comment" rows="12" class="w-full p-2 mt-1 bg-gray-700 border border-gray-600 rounded-md text-white" placeholder="What did you think of the class? (e.g., professor, exam difficulty, projects)"></textarea>
+                                    <textarea id="review-comment" rows="10" class="w-full p-2 mt-1 bg-gray-700 border border-gray-600 rounded-md text-white" placeholder="What did you think of the class? (e.g., exam difficulty, projects)"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -734,9 +740,9 @@
                         color = 'bg-green-800 text-green-200';
                     } else if (tag === 'Has Prereqs') {
                         color = 'bg-yellow-800 text-yellow-200';
-                    } else if (tag === 'HUMANITIES') { // NEW COLOR
+                    } else if (tag === 'HUMANITIES') { 
                         color = 'bg-pink-800 text-pink-200'; 
-                    } else if (tag === 'SOCIAL SCIENCE') { // NEW COLOR
+                    } else if (tag === 'SOCIAL SCIENCE') { 
                         color = 'bg-indigo-800 text-indigo-200'; 
                     } else if (tag === 'HASS') {
                         color = 'bg-purple-800 text-purple-200';
@@ -875,6 +881,18 @@
         // --- MODAL FUNCTIONS ---
 
         /**
+         * Resets the review form state, clearing inputs and status.
+         */
+        function resetReviewForm() {
+            document.getElementById('review-form').reset();
+            document.getElementById('submit-review-btn').disabled = false;
+            document.getElementById('submit-review-btn').textContent = "Submit Review";
+            document.getElementById('review-form-title').textContent = "Add Your Anonymous Review";
+            document.getElementById('editing-review-id').value = ""; // Clear hidden ID
+            document.getElementById('review-professor').value = ""; // Clear professor input
+        }
+
+        /**
          * Opens the main modal for reviewing a course.
          */
         function openReviewModal(courseId) {
@@ -898,12 +916,8 @@
             document.getElementById('modal-avg-grade').textContent = gpaToGrade(course.avgGpa);
             document.getElementById('modal-avg-attendance').textContent = `${course.avgAttendance.toFixed(0)}%`;
 
-            // Reset Form
-            document.getElementById('review-form').reset();
-            document.getElementById('submit-review-btn').disabled = false;
-            document.getElementById('submit-review-btn').textContent = "Submit Review";
-
-            // Render Reviews
+            // Reset Form and render reviews
+            resetReviewForm();
             renderReviewsList(course.reviews, 'reviews-list');
 
             // --- Show Modal ---
@@ -920,8 +934,9 @@
             modalContent.style.transform = 'scale(0.95)';
             setTimeout(() => modal.classList.add('invisible'), 250);
             
-            // Clear hidden ID on close
+            // Clear hidden IDs on close
             document.getElementById('modal-course-hidden-id').value = "";
+            document.getElementById('editing-review-id').value = "";
         }
         
         /**
@@ -972,6 +987,93 @@
         }
 
         /**
+         * Populates the form with existing review data for editing.
+         */
+        function openEditReviewModal(review) {
+            // Set hidden ID and update title
+            document.getElementById('editing-review-id').value = review.reviewId;
+            document.getElementById('review-form-title').textContent = "Editing Your Review";
+            document.getElementById('submit-review-btn').textContent = "Update Review";
+
+            // Populate inputs
+            document.getElementById('review-difficulty').value = review.difficulty;
+            document.getElementById('review-usefulness').value = review.usefulness;
+            document.getElementById('review-workload').value = review.workload;
+            document.getElementById('review-grade').value = review.grade || "";
+            document.getElementById('review-comment').value = review.comment || "";
+            // NEW: Populate Professor field
+            document.getElementById('review-professor').value = review.professor || "";
+            
+            // Populate radio button
+            document.querySelector(`input[name="review-attendance"][value="${review.attendance}"]`).checked = true;
+
+            document.getElementById('review-difficulty').focus();
+        }
+
+        /**
+         * Event handler for the Edit button.
+         */
+        function handleEditReviewClick(event) {
+            const button = event.target.closest('.edit-review-btn');
+            const reviewId = button.dataset.reviewId;
+            const courseId = button.dataset.courseId;
+            
+            const course = allCourses.find(c => c.id === courseId);
+            if (!course) return;
+
+            // Find the review to edit by its unique ID
+            const reviewToEdit = course.reviews.find(r => r.reviewId === reviewId);
+            
+            if (reviewToEdit) {
+                openEditReviewModal(reviewToEdit);
+            } else {
+                console.error("Review not found for editing:", reviewId);
+            }
+        }
+
+        /**
+         * Event handler for the Delete button.
+         */
+        async function handleDeleteReviewClick(event) {
+            const button = event.target.closest('.delete-review-btn');
+            const reviewId = button.dataset.reviewId;
+            const courseId = button.dataset.courseId;
+            
+            button.disabled = true;
+            button.textContent = 'Deleting...';
+            
+            const course = allCourses.find(c => c.id === courseId);
+            if (!course) {
+                console.error("Course not found for deletion.");
+                return;
+            }
+            
+            // Filter the reviews array to remove the specific review by its unique ID
+            const newReviews = course.reviews.filter(r => r.reviewId !== reviewId);
+            
+            const docPath = `artifacts/${appId}/public/data/reviews`;
+            const docRef = doc(db, docPath, "all_course_reviews");
+            
+            try {
+                // Overwrite the entire reviews array with the new, filtered array
+                await setDoc(docRef, {
+                    [courseId]: {
+                        reviews: newReviews
+                    }
+                }, { merge: true });
+
+                console.log(`Review deleted for ${courseId}`);
+                
+            } catch (error) {
+                console.error("Error deleting review:", error);
+                alert("There was an error deleting your review.");
+                button.disabled = false;
+                button.textContent = 'Delete';
+            }
+        }
+
+
+        /**
          * Renders the list of individual reviews in a modal (Newest First), including action buttons.
          */
         function renderReviewsList(reviews, elementId) {
@@ -992,22 +1094,22 @@
                 const date = new Date(review.timestamp);
                 const dateString = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                 
-                // Check if the current user owns this review
-                const ownsReview = review.userId === userId;
+                // Check if the current user owns this review AND if the review has a unique ID (for newly created reviews)
+                const ownsReview = review.userId === userId && review.reviewId;
 
-                // Pass the index and course ID for deletion/editing
+                // Use review.reviewId for buttons, since array index is unreliable
                 const actionsHtml = ownsReview ? `
                     <div class="flex space-x-2 mt-2">
                         <button 
                             class="edit-review-btn text-xs text-blue-400 hover:text-blue-300 font-medium"
-                            data-index="${index}"
+                            data-review-id="${review.reviewId}"
                             data-course-id="${courseId}"
                         >
                             Edit
                         </button>
                         <button 
                             class="delete-review-btn text-xs text-red-500 hover:text-red-400 font-medium"
-                            data-index="${index}"
+                            data-review-id="${review.reviewId}"
                             data-course-id="${courseId}"
                         >
                             Delete
@@ -1015,6 +1117,11 @@
                     </div>
                 ` : '';
                 
+                // --- NEW: Display Professor Name ---
+                const professorDisplay = review.professor && review.professor.trim() !== '' 
+                    ? `<span class="text-xs text-gray-300">Prof: ${review.professor}</span>` 
+                    : '';
+
                 return `
                 <div class="bg-gray-700/50 p-4 rounded-lg">
                     <div class="flex justify-between items-center mb-2">
@@ -1023,6 +1130,7 @@
                     ${review.comment ? `<p class="text-gray-200 mb-2">"${review.comment}"</p>` : '<p class="text-gray-400 italic mb-2">No comment left.</p>'}
                     ${actionsHtml}
                     <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400 border-t border-gray-600 pt-2 mt-2">
+                        ${professorDisplay}
                         <span>Diff: <strong class="text-green-400">${review.difficulty}</strong></span>
                         <span>Useful: <strong class="text-blue-400">${review.usefulness}</strong></span>
                         <span>Work: <strong class="text-yellow-400">${review.workload}</strong></span>
@@ -1037,59 +1145,14 @@
             reviewsListElement.querySelectorAll('.delete-review-btn').forEach(button => {
                 button.addEventListener('click', handleDeleteReviewClick);
             });
-            // reviewsListElement.querySelectorAll('.edit-review-btn').forEach(button => {
-            //     button.addEventListener('click', handleEditReviewClick); // Placeholder
-            // });
-        }
-        
-        /**
-         * Event handler for the Delete button.
-         */
-        async function handleDeleteReviewClick(event) {
-            const button = event.target;
-            const reviewIndex = parseInt(button.dataset.index);
-            const courseId = button.dataset.courseId;
-            
-            // Safety Check: Since we cannot use confirm(), we rely on user clicking the button.
-            button.disabled = true;
-            button.textContent = 'Deleting...';
-            
-            // 1. Find the local review object to delete
-            const course = allCourses.find(c => c.id === courseId);
-            if (!course || !course.reviews[reviewIndex]) {
-                console.error("Review not found for deletion.");
-                return;
-            }
-            
-            const reviewToDelete = course.reviews[reviewIndex];
-            
-            // 2. Perform the delete operation (atomically remove from the array)
-            const docPath = `artifacts/${appId}/public/data/reviews`;
-            const docRef = doc(db, docPath, "all_course_reviews");
-            
-            try {
-                // Remove the specific review object from the reviews array
-                await updateDoc(docRef, {
-                    [`${courseId}.reviews`]: arrayRemove(reviewToDelete)
-                });
-                
-                // 3. Invalidate the AI cache (removed AI summary line, but keeping for future)
-                // await updateDoc(docRef, { [`${courseId}.ai_summary`]: null });
-
-                console.log(`Review deleted for ${courseId}`);
-                // The onSnapshot listener handles the re-render automatically.
-
-            } catch (error) {
-                console.error("Error deleting review:", error);
-                alert("There was an error deleting your review.");
-                button.disabled = false;
-                button.textContent = 'Delete';
-            }
+            reviewsListElement.querySelectorAll('.edit-review-btn').forEach(button => {
+                 button.addEventListener('click', handleEditReviewClick);
+            });
         }
 
 
         /**
-         * Handles the submission of the review form.
+         * Handles the submission (New or Edit) of the review form.
          */
         async function handleSubmitReview(event) {
             event.preventDefault();
@@ -1099,45 +1162,76 @@
             }
 
             const submitBtn = document.getElementById('submit-review-btn');
+            const editingReviewId = document.getElementById('editing-review-id').value;
+            const isEditing = !!editingReviewId;
+
             submitBtn.disabled = true;
-            submitBtn.textContent = "Submitting...";
+            submitBtn.textContent = isEditing ? "Updating..." : "Submitting...";
             
             // Get data from form
             const courseId = document.getElementById('modal-course-hidden-id').value;
-            const review = {
+            const newReviewData = {
                 difficulty: parseInt(document.getElementById('review-difficulty').value),
                 usefulness: parseInt(document.getElementById('review-usefulness').value),
                 workload: parseInt(document.getElementById('review-workload').value),
                 grade: document.getElementById('review-grade').value || null,
                 attendance: document.querySelector('input[name="review-attendance"]:checked').value,
                 comment: document.getElementById('review-comment').value.trim() || null,
-                timestamp: new Date().toISOString(),
-                userId: userId // Include the current user's ID
+                // NEW: Capture Professor name
+                professor: document.getElementById('review-professor').value.trim() || null,
+                userId: userId,
             };
 
-            // Path to the document
+            const course = allCourses.find(c => c.id === courseId);
             const docPath = `artifacts/${appId}/public/data/reviews`;
             const docRef = doc(db, docPath, "all_course_reviews");
 
             try {
-                // --- STEP 1: Add the new review ---
-                await setDoc(docRef, {
-                    [courseId]: {
-                        reviews: arrayUnion(review)
-                    }
-                }, { merge: true }); 
+                if (isEditing) {
+                    // --- EDIT PATH: Overwrite existing review data in the array ---
+                    const updatedReviews = course.reviews.map(review => {
+                        if (review.reviewId === editingReviewId) {
+                            return {
+                                ...review, // Keep old metadata like original timestamp
+                                ...newReviewData, // Overwrite with new data
+                                timestamp: new Date().toISOString() // Update timestamp for sorting
+                            };
+                        }
+                        return review;
+                    });
 
-                // --- STEP 2: Invalidate the cache (removed AI summary line, but keeping for future)
-                // await updateDoc(docRef, { [`${courseId}.ai_summary`]: null });
+                    await setDoc(docRef, {
+                        [courseId]: {
+                            reviews: updatedReviews
+                        }
+                    }, { merge: true });
 
-                console.log(`Review submitted for ${courseId}`);
+                    console.log(`Review updated for ${courseId}: ${editingReviewId}`);
+
+                } else {
+                    // --- NEW REVIEW PATH: Add new review with a unique ID ---
+                    const newReview = {
+                        ...newReviewData,
+                        timestamp: new Date().toISOString(),
+                        reviewId: Date.now() + '-' + Math.random().toString(36).substring(2) // Unique ID
+                    };
+
+                    await setDoc(docRef, {
+                        [courseId]: {
+                            reviews: arrayUnion(newReview)
+                        }
+                    }, { merge: true }); 
+                    
+                    console.log(`New review submitted for ${courseId}`);
+                }
+                
                 closeReviewModal();
 
             } catch (error) {
-                console.error("Error submitting review:", error);
-                alert("There was an error submitting your review. Please try again."); 
+                console.error("Error saving review:", error);
+                alert("There was an error saving your review. Please try again."); 
                 submitBtn.disabled = false;
-                submitBtn.textContent = "Submit Review";
+                submitBtn.textContent = isEditing ? "Update Review" : "Submit Review";
             }
         }
 
