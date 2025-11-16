@@ -388,6 +388,26 @@
             return "F";
         }
 
+        // --- SCHOOL DATA (FOR NEW TAG) ---
+        const schoolData = [
+            { "name": "Humanities, Arts, and Social Sciences", "depts": [ { "code": "ARTS", "name": "Arts" }, { "code": "COGS", "name": "Cognitive Science" }, { "code": "COMM", "name": "Communication" }, { "code": "ECON", "name": "Economics" }, { "code": "GSAS", "name": "Games and Simulation Arts and Sciences" }, { "code": "IHSS", "name": "Interdisciplinary Humanities and Social Sciences" }, { "code": "INQR", "name": "HASS Inquiry" }, { "code": "LANG", "name": "Foreign Languages" }, { "code": "LITR", "name": "Literature" }, { "code": "PHIL", "name": "Philosophy" }, { "code": "PSYC", "name": "Psychology" }, { "code": "STSO", "name": "Science, Technology, and Society" }, { "code": "WRIT", "name": "Writing" } ] },
+            { "name": "Interdisciplinary and Other", "depts": [ { "code": "ADMN", "name": "Administrative Courses" }, { "code": "USAF", "name": "Aerospace Studies (Air Force ROTC)" }, { "code": "USAR", "name": "Military Science (Army ROTC)" }, { "code": "USNA", "name": "Naval Science (Navy ROTC)" } ] },
+            { "name": "Engineering", "depts": [ { "code": "BMED", "name": "Biomedical Engineering" }, { "code": "CHME", "name": "Chemical Engineering" }, { "code": "CIVL", "name": "Civil Engineering" }, { "code": "ECSE", "name": "Electrical, Computer, and Systems Engineering" }, { "code": "ENGR", "name": "General Engineering" }, { "code": "ENVE", "name": "Environmental Engineering" }, { "code": "ESCI", "name": "Engineering Science" }, { "code": "ISYE", "name": "Industrial and Systems Engineering" }, { "code": "MANE", "name": "Mechanical, Aerospace, and Nuclear Engineering" }, { "code": "MTLE", "name": "Materials Science and Engineering" } ] },
+            { "name": "Architecture", "depts": [ { "code": "ARCH", "name": "Architecture" }, { "code": "LGHT", "name": "Lighting" } ] },
+            { "name": "Information Technology and Web Science", "depts": [ { "code": "ITWS", "name": "Information Technology and Web Science" } ] },
+            { "name": "Science", "depts": [ { "code": "ASTR", "name": "Astronomy" }, { "code": "BCBP", "name": "Biochemistry and Biophysics" }, { "code": "BIOL", "name": "Biology" }, { "code": "CHEM", "name": "Chemistry" }, { "code": "CSCI", "name": "Computer Science" }, { "code": "ERTH", "name": "Earth and Environmental Science" }, { "code": "ISCI", "name": "Interdisciplinary Science" }, { "code": "MATH", "name": "Mathematics" }, { "code": "MATP", "name": "Mathematical Programming, Probability, and Statistics" }, { "code": "PHYS", "name": "Physics" } ] },
+            { "name": "Management", "depts": [ { "code": "BUSN", "name": "Business (H)" }, { "code": "MGMT", "name": "Management" } ] },
+            { "name": "Uncategorized", "depts": [ { "code": "ILEA", "name": "Independent Learning Exper" } ] }
+        ];
+
+        // Create a lookup map for subject -> school name
+        const subjectSchoolMap = new Map();
+        schoolData.forEach(school => {
+            school.depts.forEach(dept => {
+                subjectSchoolMap.set(dept.code, school.name);
+            });
+        });
+
         // --- CORE DATA & RENDERING LOGIC ---
 
         /**
@@ -426,13 +446,21 @@
                     const prereqData = prereqId ? prereqGraph[prereqId] : null; // Look up "CSCI 1200" in prereqGraph
                     const hasPrereqs = prereqData && prereqData.prereqs && prereqData.prereqs.length > 0;
 
-                    // --- FEATURE 2: Add Prereq Tags ---
+                    // --- FEATURE 2 & NEW TAG: Add Prereq and School Tags ---
                     let tags = [];
+                    // 1. Prereq Tag
                     if (hasPrereqs) {
                         tags.push('Has Prereqs');
                     } else {
                         tags.push('No Prereqs');
                     }
+                    
+                    // 2. School Tag (NEW)
+                    const schoolName = subjectSchoolMap.get(course.subj.trim().toUpperCase());
+                    if (schoolName) {
+                        tags.push(schoolName);
+                    }
+                    // --- END TAGGING ---
                     
                     return {
                         id: id,
@@ -599,10 +627,18 @@
             listElement.innerHTML = filteredCourses.map(course => {
                 // --- FEATURE 2: Create HTML for tags ---
                 const tagsHtml = course.tags.map(tag => {
-                    const color = tag === 'No Prereqs' 
-                        ? 'bg-green-800 text-green-200' 
-                        : 'bg-yellow-800 text-yellow-200';
-                    return `<span class="text-xs font-medium px-2 py-0.5 rounded ${color}">${tag}</span>`;
+                    let color;
+                    // Define colors based on tag type
+                    if (tag === 'No Prereqs') {
+                        color = 'bg-green-800 text-green-200';
+                    } else if (tag.includes('Prereqs')) {
+                        color = 'bg-yellow-800 text-yellow-200';
+                    } else {
+                        // NEW: Color for the School/Department tag
+                        color = 'bg-blue-800 text-blue-200'; 
+                    }
+
+                    return `<span class="text-xs font-medium px-2 py-0.5 rounded ${color}" title="${tag}">${tag}</span>`;
                 }).join(' ');
                 
                 return `
