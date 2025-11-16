@@ -26,10 +26,10 @@
             background: #6b7280; /* gray-500 */
         }
         /* Style for the modal */
-        #review-modal {
+        #review-modal, #details-modal {
             transition: opacity 0.25s ease, visibility 0.25s ease;
         }
-        #review-modal-content {
+        #review-modal-content, #details-modal-content {
             transition: transform 0.25s ease;
         }
         /* Simple spinner for loading state */
@@ -44,6 +44,10 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        /* Ensure leaderboard items are clickable */
+        #leaderboard-list li {
+            cursor: pointer;
         }
     </style>
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
@@ -62,17 +66,34 @@
             
             <!-- Left Column: Leaderboard -->
             <div class="lg:col-span-1 bg-gray-800 p-6 rounded-xl shadow-2xl">
-                <div class="flex justify-between items-center border-b border-gray-700 pb-2 mb-4">
-                    <h2 class="text-2xl font-semibold text-white">
-                        Leaderboards
-                    </h2>
-                    <select id="leaderboard-sort" class="bg-gray-700 text-white text-sm rounded-md p-1 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500">
-                        <option value="usefulness">Most Useful</option>
-                        <option value="easiness">Easiest</option>
-                        <option value="workload">Lightest Workload</option>
-                    </select>
+                <!-- Leaderboard Header -->
+                <div class="border-b border-gray-700 pb-2 mb-4">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-semibold text-white">
+                            Leaderboards
+                        </h2>
+                        <select id="leaderboard-sort" class="bg-gray-700 text-white text-sm rounded-md p-1 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500">
+                            <option value="usefulness">Most Useful</option>
+                            <option value="easiness">Easiest</option>
+                            <option value="workload">Lightest Workload</option>
+                        </select>
+                    </div>
                 </div>
-                <ol id="leaderboard-list" class="space-y-3">
+                <!-- Leaderboard Filters -->
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <input 
+                        type="text" 
+                        id="leaderboard-subject-filter" 
+                        placeholder="Filter by subject (e.g. CSCI)"
+                        class="col-span-2 sm:col-span-1 w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                    <label class="col-span-2 sm:col-span-1 flex items-center justify-end space-x-2 text-sm text-gray-300">
+                        <input type="checkbox" id="leaderboard-hass-filter" class="form-checkbox bg-gray-700 border-gray-600 text-red-500 rounded focus:ring-red-400">
+                        <span>HASS Courses Only</span>
+                    </label>
+                </div>
+                <!-- Leaderboard List -->
+                <ol id="leaderboard-list" class="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
                     <!-- Leaderboard items will be injected here by JavaScript -->
                 </ol>
             </div>
@@ -95,7 +116,7 @@
         </main>
     </div>
 
-    <!-- Review Modal -->
+    <!-- Review Modal (for adding/editing reviews) -->
     <div id="review-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center p-4 invisible opacity-0 z-50">
         <div id="review-modal-content" class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl border border-gray-700 transform scale-95">
             <!-- Modal Header -->
@@ -191,6 +212,57 @@
             </div>
         </div>
     </div>
+    
+    <!-- Leaderboard Details Modal (Read-Only) -->
+    <div id="details-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center p-4 invisible opacity-0 z-50">
+        <div id="details-modal-content" class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl border border-gray-700 transform scale-95">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center p-6 border-b border-gray-700">
+                <div>
+                    <h2 id="details-modal-course-name" class="text-2xl font-semibold text-white">Course Name</h2>
+                    <p id="details-modal-course-id" class="text-gray-400">COURSE-ID</p>
+                </div>
+                <button id="details-modal-close-btn" class="text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Modal Body (Read-Only) -->
+            <div class="p-6 max-h-[70vh] overflow-y-auto">
+                <!-- Details Section -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-gray-200 mb-3">Student Feedback (Averages)</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <div>
+                            <span class="text-2xl font-bold text-green-400" id="details-modal-avg-easiness">0.0</span>
+                            <span class="block text-sm text-gray-400">Easiness</span>
+                        </div>
+                        <div>
+                            <span class="text-2xl font-bold text-blue-400" id="details-modal-avg-usefulness">0.0</span>
+                            <span class="block text-sm text-gray-400">Usefulness</span>
+                        </div>
+                        <div>
+                            <span class="text-2xl font-bold text-yellow-400" id="details-modal-avg-workload">0.0</span>
+                            <span class="block text-sm text-gray-400">Workload</span>
+                        </div>
+                        <div>
+                            <span class="text-2xl font-bold text-red-400" id="details-modal-avg-attendance">0%</span>
+                            <span class="block text-sm text-gray-400">Attendance Req.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Student Comments Section (Read-Only) -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-200 mb-3 border-t border-gray-700 pt-6">Student Comments</h3>
+                    <div id="details-modal-comments-list" class="space-y-3 max-h-48 overflow-y-auto pr-2">
+                        <!-- Read-only comments will be injected here by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Firebase SDK -->
     <script type="module">
@@ -378,11 +450,15 @@
 
         /**
          * Renders the top 10 courses on the leaderboard based on a sort key.
-         * @param {string} [sortBy='usefulness'] - 'usefulness', 'easiness', or 'workload'.
          */
-        function renderLeaderboard(sortBy = 'usefulness') {
+        function renderLeaderboard() {
             const listElement = document.getElementById('leaderboard-list');
             if (!listElement) return;
+
+            // Get current filter values
+            const sortBy = document.getElementById('leaderboard-sort').value;
+            const subjectFilter = document.getElementById('leaderboard-subject-filter').value.toLowerCase();
+            const hassOnly = document.getElementById('leaderboard-hass-filter').checked;
 
             if (courses.length === 0) {
                 listElement.innerHTML = `
@@ -395,7 +471,15 @@
 
             const sortedCourses = [...courses]
                 .filter(c => c.reviewCount > 0) // Only show courses with reviews
-                .sort((a, b) => {
+                .filter(c => { // Apply HASS filter
+                    if (!hassOnly) return true;
+                    return c.isHass;
+                })
+                .filter(c => { // Apply subject filter
+                    if (subjectFilter.length === 0) return true;
+                    return c.subj.toLowerCase().includes(subjectFilter);
+                })
+                .sort((a, b) => { // Apply sorting
                     switch (sortBy) {
                         case 'easiness':
                             // Higher score is better
@@ -409,10 +493,10 @@
                             return b.avgUsefulness - a.avgUsefulness;
                     }
                 })
-                .slice(0, 10);
+                .slice(0, 10); // Get top 10
 
             if (sortedCourses.length === 0) {
-                listElement.innerHTML = `<p class="text-gray-400 text-center">No reviews yet! Be the first.</p>`;
+                listElement.innerHTML = `<p class="text-gray-400 text-center">No reviews found for these filters.</p>`;
                 return;
             }
 
@@ -434,7 +518,7 @@
                 }
 
                 return `
-                <li class="flex justify-between items-center bg-gray-700/50 p-3 rounded-lg transition-all hover:bg-gray-700">
+                <li class="leaderboard-item flex justify-between items-center bg-gray-700/50 p-3 rounded-lg transition-all hover:bg-gray-700" data-id="${course.id}">
                     <div class="flex items-center min-w-0">
                         <span class="text-2xl font-bold text-red-400 mr-4 w-8 text-center">${index + 1}</span>
                         <div class="flex-grow min-w-0">
@@ -449,6 +533,10 @@
 
         // --- MODAL FUNCTIONS ---
 
+        /**
+         * Populates and opens the main review modal (for adding/editing).
+         * @param {string} courseId - The ID of the course to open.
+         */
         function openReviewModal(courseId) {
             const course = courses.find(c => c.id === courseId);
             if (!course) return;
@@ -464,68 +552,8 @@
             document.getElementById('modal-avg-workload').textContent = course.avgWorkload.toFixed(1);
             document.getElementById('modal-avg-attendance').textContent = `${course.avgAttendance.toFixed(0)}%`;
 
-            // Populate comments list
-            const commentsList = document.getElementById('modal-comments-list');
-            if (!course.reviews || course.reviews.length === 0) {
-                commentsList.innerHTML = `<p class="text-gray-400 text-sm text-center">No comments yet. Be the first to review!</p>`;
-            } else {
-                // Sort reviews by date, newest first (if createdAt exists)
-                const sortedReviews = [...course.reviews].sort((a, b) => {
-                    if (a.createdAt && b.createdAt) {
-                        // Firestore timestamps can be objects, convert them
-                        const dateA = a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt.seconds * 1000);
-                        const dateB = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt.seconds * 1000);
-                        return dateB - dateA;
-                    }
-                    return 0;
-                });
-
-                commentsList.innerHTML = sortedReviews.map(review => {
-                    // Format the date
-                    let reviewDate = '';
-                    let isEdited = false;
-                    let dateToFormat = review.createdAt;
-
-                    // If the review was updated, show the 'updatedAt' date
-                    if (review.updatedAt) {
-                        dateToFormat = review.updatedAt;
-                        isEdited = true;
-                    }
-
-                    if (dateToFormat) {
-                        // Handle both Firestore Timestamps and Date objects
-                        const date = dateToFormat.toDate ? dateToFormat.toDate() : new Date(dateToFormat.seconds * 1000);
-                        reviewDate = date.toLocaleDateString();
-                    }
-
-                    return (`
-                    <div class="bg-gray-700 p-3 rounded-lg">
-                        <p class="text-white text-sm mb-2">${review.comment || 'No comment provided.'}</p>
-                        <div class="flex justify-between items-center">
-                            <span class="text-xs text-gray-400">
-                                Professor: <strong class="text-gray-300">${review.professor || 'N/A'}</strong>
-                                ${reviewDate ? `| <span class="italic">${reviewDate} ${isEdited ? '(edited)' : ''}</span>` : ''}
-                            </span>
-                            <!-- Show buttons only if the review userId matches the current user's ID -->
-                            ${review.userId === userId ? `
-                                <div class="flex gap-2 flex-shrink-0 ml-2">
-                                    <button class="edit-review-btn text-xs font-medium text-blue-400 hover:text-blue-300 p-1" data-review-id="${review.id}" aria-label="Edit review">Edit</button>
-                                    <button class="delete-review-btn text-xs font-medium text-red-400 hover:text-red-300 p-1" data-review-id="${review.id}" aria-label="Delete review">Delete</button>
-                                </div>
-                            ` : ''}
-                        </div>
-                        <div class="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs">
-                            <span class="text-green-300">Easiness: ${review.easiness}</span>
-                            <span class="text-blue-300">Usefulness: ${review.usefulness}</span>
-                            <span class="text-yellow-300">Workload: ${review.workload}</span>
-                            <span class="text-red-300">Attendance: ${review.attendance === 'yes' ? 'Yes' : 'No'}</span>
-                        </div>
-                    </div>
-                `)
-            } // <-- This was line 524. I removed the extra ')'
-
-            ).join(''); // <-- This is line 526 in your file. It's now correct!
-            }
+            // Populate comments list (pass the read/write comments list)
+            populateCommentsList(course, document.getElementById('modal-comments-list'));
 
             // Reset form
             document.getElementById('review-form').reset();
@@ -538,6 +566,9 @@
             modalContent.classList.remove('scale-95');
         }
 
+        /**
+         * Closes the main review modal.
+         */
         function closeReviewModal() {
             const modal = document.getElementById('review-modal');
             const modalContent = document.getElementById('review-modal-content');
@@ -555,6 +586,114 @@
                 submitBtn.textContent = 'Submit Review';
                 submitBtn.disabled = false;
             }, 250);
+        }
+
+        /**
+         * Populates and opens the read-only details modal.
+         * @param {string} courseId - The ID of the course to open.
+         */
+        function openDetailsModal(courseId) {
+            const course = courses.find(c => c.id === courseId);
+            if (!course) return;
+
+            // Populate modal with course data
+            document.getElementById('details-modal-course-name').textContent = course.name;
+            document.getElementById('details-modal-course-id').textContent = course.id;
+
+            // Populate averages
+            document.getElementById('details-modal-avg-easiness').textContent = course.avgEasiness.toFixed(1);
+            document.getElementById('details-modal-avg-usefulness').textContent = course.avgUsefulness.toFixed(1);
+            document.getElementById('details-modal-avg-workload').textContent = course.avgWorkload.toFixed(1);
+            document.getElementById('details-modal-avg-attendance').textContent = `${course.avgAttendance.toFixed(0)}%`;
+
+            // Populate comments list (pass the read-only comments list)
+            populateCommentsList(course, document.getElementById('details-modal-comments-list'));
+
+            // Show modal
+            const modal = document.getElementById('details-modal');
+            const modalContent = document.getElementById('details-modal-content');
+            modal.classList.remove('invisible', 'opacity-0');
+            modalContent.classList.remove('scale-95');
+        }
+
+        /**
+         * Closes the read-only details modal.
+         */
+        function closeDetailsModal() {
+            const modal = document.getElementById('details-modal');
+            const modalContent = document.getElementById('details-modal-content');
+            modal.classList.add('opacity-0');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('invisible');
+            }, 250);
+        }
+
+        /**
+         * A shared function to populate any comments list (read-write or read-only).
+         * @param {object} course - The course object with its reviews.
+         * @param {HTMLElement} commentsListElement - The DOM element to fill.
+         */
+        function populateCommentsList(course, commentsListElement) {
+            if (!course.reviews || course.reviews.length === 0) {
+                commentsListElement.innerHTML = `<p class="text-gray-400 text-sm text-center">No comments yet. Be the first to review!</p>`;
+                return;
+            }
+
+            // Sort reviews by date, newest first
+            const sortedReviews = [...course.reviews].sort((a, b) => {
+                if (a.createdAt && b.createdAt) {
+                    const dateA = a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt.seconds * 1000);
+                    const dateB = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt.seconds * 1000);
+                    return dateB - dateA;
+                }
+                return 0;
+            });
+
+            commentsListElement.innerHTML = sortedReviews.map(review => {
+                // Format the date
+                let reviewDate = '';
+                let isEdited = false;
+                let dateToFormat = review.createdAt;
+
+                if (review.updatedAt) {
+                    dateToFormat = review.updatedAt;
+                    isEdited = true;
+                }
+
+                if (dateToFormat) {
+                    const date = dateToFormat.toDate ? dateToFormat.toDate() : new Date(dateToFormat.seconds * 1000);
+                    reviewDate = date.toLocaleDateString();
+                }
+
+                // Check if this is the read-write modal by seeing if edit/delete buttons should be shown
+                const showEditDelete = (review.userId === userId) && (commentsListElement.id === 'modal-comments-list');
+
+                return (`
+                <div class="bg-gray-700 p-3 rounded-lg">
+                    <p class="text-white text-sm mb-2">${review.comment || 'No comment provided.'}</p>
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-gray-400">
+                            Professor: <strong class="text-gray-300">${review.professor || 'N/A'}</strong>
+                            ${reviewDate ? `| <span class="italic">${reviewDate} ${isEdited ? '(edited)' : ''}</span>` : ''}
+                        </span>
+                        <!-- Show buttons only if it's the user's review AND it's the main review modal -->
+                        ${showEditDelete ? `
+                            <div class="flex gap-2 flex-shrink-0 ml-2">
+                                <button class="edit-review-btn text-xs font-medium text-blue-400 hover:text-blue-300 p-1" data-review-id="${review.id}" aria-label="Edit review">Edit</button>
+                                <button class="delete-review-btn text-xs font-medium text-red-400 hover:text-red-300 p-1" data-review-id="${review.id}" aria-label="Delete review">Delete</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs">
+                        <span class="text-green-300">Easiness: ${review.easiness}</span>
+                        <span class="text-blue-300">Usefulness: ${review.usefulness}</span>
+                        <span class="text-yellow-300">Workload: ${review.workload}</span>
+                        <span class="text-red-300">Attendance: ${review.attendance === 'yes' ? 'Yes' : 'No'}</span>
+                    </div>
+                </div>
+                `);
+            }).join('');
         }
 
         async function handleSubmitReview(event) {
@@ -595,7 +734,9 @@
                 closeReviewModal(); // This will also reset the form
             } catch (error) {
                 console.error("Error saving document: ", error);
-                alert("Could not save your review. Please try again.");
+                // We don't have a specific message box, so alert is the fallback.
+                // In a real app, we'd use a custom modal for errors.
+                console.error("Could not save your review. Please try again.");
                 submitBtn.disabled = false;
                 submitBtn.textContent = editingReviewId ? 'Update Review' : 'Submit Review';
             }
@@ -607,16 +748,27 @@
             renderAllCourses(filterText);
         }
 
-        function handleLeaderboardSort(event) {
-            const sortBy = event.target.value;
-            renderLeaderboard(sortBy);
+        function handleLeaderboardFilterChange() {
+            // This function is now used for all leaderboard filter changes
+            renderLeaderboard();
         }
 
         function handleListClick(event) {
+            // For the "All Courses" list
             const reviewButton = event.target.closest('.review-btn');
             if (reviewButton) {
                 const id = reviewButton.dataset.id;
                 openReviewModal(id);
+                return;
+            }
+        }
+
+        function handleLeaderboardClick(event) {
+            // For the "Leaderboard" list
+            const item = event.target.closest('.leaderboard-item');
+            if (item) {
+                const id = item.dataset.id;
+                openDetailsModal(id);
             }
         }
 
@@ -624,7 +776,6 @@
          * Sets up the real-time listener for reviews from Firestore.
          */
         function setupReviewListener() {
-            // Path to the reviews collection
             // We use a simple path "reviews"
             reviewsCollection = collection(db, "reviews");
             const q = query(reviewsCollection);
@@ -640,11 +791,30 @@
                 // Recalculate all averages with the fresh data
                 calculateAllAverages(allReviews);
 
-                // Re-render both lists
-                const currentSort = document.getElementById('leaderboard-sort').value;
+                // Re-render both lists (using the new leaderboard render function)
                 const currentSearch = document.getElementById('search-bar').value;
-                renderLeaderboard(currentSort);
+                renderLeaderboard(); 
                 renderAllCourses(currentSearch);
+
+                // This is a good place to update any open modal,
+                // so the user sees new comments appear in real-time.
+                const reviewModalOpen = !document.getElementById('review-modal').classList.contains('invisible');
+                const detailsModalOpen = !document.getElementById('details-modal').classList.contains('invisible');
+
+                if (reviewModalOpen) {
+                    const courseId = document.getElementById('modal-course-hidden-id').value;
+                    if (courseId) {
+                        const course = courses.find(c => c.id === courseId);
+                        populateCommentsList(course, document.getElementById('modal-comments-list'));
+                    }
+                }
+                if (detailsModalOpen) {
+                    const courseId = document.getElementById('details-modal-course-id').textContent;
+                    if (courseId) {
+                        const course = courses.find(c => c.id === courseId);
+                        populateCommentsList(course, document.getElementById('details-modal-comments-list'));
+                    }
+                }
 
             }, (error) => {
                 console.error("Error getting reviews from Firestore: ", error);
@@ -665,24 +835,47 @@
             // 1. Get DOM elements
             const searchBar = document.getElementById('search-bar');
             const allCoursesList = document.getElementById('all-courses-list');
+            const leaderboardList = document.getElementById('leaderboard-list');
             const leaderboardSort = document.getElementById('leaderboard-sort');
+            const leaderboardSubjectFilter = document.getElementById('leaderboard-subject-filter');
+            const leaderboardHassFilter = document.getElementById('leaderboard-hass-filter');
+            
+            // Review Modal Elements
             const modalCloseBtn = document.getElementById('modal-close-btn');
             const modal = document.getElementById('review-modal');
-            const modalContent = document.getElementById('review-modal-content'); // For event bubbling
+            const modalContent = document.getElementById('review-modal-content');
             const reviewForm = document.getElementById('review-form');
 
+            // Details Modal Elements
+            const detailsModalCloseBtn = document.getElementById('details-modal-close-btn');
+            const detailsModal = document.getElementById('details-modal');
+
             // 2. Set up event listeners
-            // Use debounce on the search bar input to prevent lag
+            // Use debounce on search bars to prevent lag
             searchBar.addEventListener('input', debounce(handleSearch, 300));
-            leaderboardSort.addEventListener('change', handleLeaderboardSort);
+            leaderboardSubjectFilter.addEventListener('input', debounce(handleLeaderboardFilterChange, 300));
+            
+            // Other filters
+            leaderboardSort.addEventListener('change', handleLeaderboardFilterChange);
+            leaderboardHassFilter.addEventListener('change', handleLeaderboardFilterChange);
+
+            // Click listeners for lists
             allCoursesList.addEventListener('click', handleListClick);
+            leaderboardList.addEventListener('click', handleLeaderboardClick);
+            
+            // Review Modal Listeners
             modalCloseBtn.addEventListener('click', closeReviewModal);
             modal.addEventListener('click', (e) => {
                 if (e.target.id === 'review-modal') closeReviewModal();
             });
-            // Listen for clicks inside the modal body for edit/delete
-            modalContent.addEventListener('click', handleModalClicks);
+            modalContent.addEventListener('click', handleModalClicks); // For edit/delete
             reviewForm.addEventListener('submit', handleSubmitReview);
+            
+            // Details Modal Listeners
+            detailsModalCloseBtn.addEventListener('click', closeDetailsModal);
+            detailsModal.addEventListener('click', (e) => {
+                if (e.target.id === 'details-modal') closeDetailsModal();
+            });
             
             // 3. Set initial loading state
             renderAllCourses(); // Will show loading spinner
@@ -765,7 +958,8 @@
                         // onSnapshot will handle the UI update
                     } catch (error) {
                         console.error("Error deleting review: ", error);
-                        alert("Could not delete the review. Please try again.");
+                        // alert("Could not delete the review. Please try again.");
+                        console.error("Could not delete the review. Please try again.");
                         target.textContent = 'Delete';
                         target.disabled = false;
                     }
