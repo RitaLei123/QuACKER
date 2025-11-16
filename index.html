@@ -381,52 +381,6 @@
         }
 
         /**
-         * Calculates difficulty based on user's rules, now aware of HASS.
-         * @param {string} crse - The course number (e.g., "4210").
-         * @param {string} name - The course name.
-         * @param {boolean} isHass - Whether the course is HASS.
-         */
-        function getDifficulty(crse, name, isHass) {
-            const level = parseInt(crse, 10);
-            const nameLower = name.toLowerCase();
-            const isIntro = nameLower.includes('intro');
-
-            if (level < 2000) return 1; // 1000-level
-            
-            if (level < 3000) { // 2000-level
-                if (isHass) return isIntro ? 1 : 2;
-                return isIntro ? 2 : 3;
-            }
-            
-            if (level < 4000) { // 3000-level
-                if (isHass) return 2;
-                return isIntro ? 2 : 3;
-            }
-            
-            if (level >= 4000) { // 4000-level+
-                if (isHass) return isIntro ? 3 : 4; // Max HASS diff at 4
-                return isIntro ? 4 : 5; // Max STEM diff at 5
-            }
-            
-            return 0; // Default
-        }
-
-
-        /**
-         * Gets the appropriate color class for a difficulty level.
-         */
-        function getDifficultyColor(difficulty) {
-            switch (difficulty) {
-                case 1: return 'bg-green-600';
-                case 2: return 'bg-blue-600';
-                case 3: return 'bg-yellow-600';
-                case 4: return 'bg-orange-600';
-                case 5: return 'bg-red-600';
-                default: return 'bg-gray-600';
-            }
-        }
-
-        /**
          * Calculates and updates the average scores for all courses based on reviews.
          * @param {Array} allReviews - An array of all review documents from Firestore.
          */
@@ -557,9 +511,6 @@
                         <span class="font-semibold text-white block truncate">${course.name}</span>
                         <span class="text-sm text-gray-400">${course.id}</span>
                         <!-- Tags -->
-                        <span class="${getDifficultyColor(course.difficulty)} text-white text-xs px-2 py-0.5 rounded-full ml-2">
-                            Diff: ${course.difficulty}
-                        </span>
                         <span class="${schoolColor} text-white text-xs px-2 py-0.5 rounded-full ml-1">
                             ${schoolName}
                         </span>
@@ -1110,7 +1061,7 @@
                             name: course.name,
                             subj: course.subj,
                             crse: course.crse,
-                            difficulty: getDifficulty(course.crse, course.name, isHass), // Pass isHass to difficulty calc
+                            // difficulty: getDifficulty(course.crse, course.name, isHass), // Removed this line
                             school: schoolName,
                             isHass: isHass,
                             reviews: [] // Initialize empty reviews array
@@ -1238,12 +1189,5 @@
             init(firebaseConfig);
         });
     </script>
-
-    <!-- 
-    This is a duplicate <script type="module"> block that was causing errors.
-    I have removed it to fix the application. The correct and only script block
-    is the one above.
-    -->
-
 </body>
 </html>
