@@ -92,7 +92,8 @@
                         >
                     </div>
                 </div>
-                <ol id="leaderboard-list" class="space-y-3">
+                <!-- Leaderboard list with scrollbar -->
+                <ol id="leaderboard-list" class="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
                     <!-- Leaderboard items will be injected here by JavaScript -->
                     <li class="text-gray-400 text-center">Loading leaderboards...</li>
                 </ol>
@@ -104,15 +105,16 @@
                     All Courses
                 </h2>
                 <!-- Search and Filter Controls -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <!-- NEW LAYOUT: Search bar takes 2/3 space on medium screens, filter takes 1/3 -->
+                <div class="flex flex-col md:flex-row gap-4 mb-4">
                     <input 
                         type="text" 
                         id="search-bar" 
                         placeholder="Search by name, subject, or course #" 
-                        class="col-span-full md:col-span-1 p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                        class="w-full md:w-2/3 p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
                     >
                     <!-- COMBINED ALL COURSES FILTER -->
-                    <select id="all-courses-filter" class="col-span-full md:col-span-2 p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500">
+                    <select id="all-courses-filter" class="w-full md:w-1/3 p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500">
                         <option value="">Filter by School/Core Tag...</option>
                         <!-- Options populated by JavaScript -->
                     </select>
@@ -431,18 +433,13 @@
 
         // Map for specific required tags (HASS, SCIENCE, MATH)
         const specificTagsMap = new Map();
-        // --- NEW: Separate HASS into Humanities and Social Science categories ---
-        
         // HUMANITIES Codes
         ['ARTS', 'COGS', 'COMM', 'LANG', 'LITR', 'PHIL', 'WRIT'].forEach(code => specificTagsMap.set(code, 'HUMANITIES'));
-        
-        // SOCIAL SCIENCE Codes (includes IHSS and INQR as they fulfill that requirement space)
+        // SOCIAL SCIENCE Codes
         ['ECON', 'GSAS', 'PSYC', 'STSO', 'IHSS', 'INQR'].forEach(code => specificTagsMap.set(code, 'SOCIAL SCIENCE'));
-        
         // SCIENCE Tag Codes
         ['ASTR', 'BCBP', 'BIOL', 'CHEM', 'CSCI', 'ERTH', 'ISCI', 'PHYS'].forEach(code => specificTagsMap.set(code, 'SCIENCE'));
-        
-        // MATH Tag Codes (MATH and MATP only)
+        // MATH Tag Codes
         ['MATH', 'MATP'].forEach(code => specificTagsMap.set(code, 'MATH'));
 
 
@@ -456,7 +453,6 @@
             if (!allCoursesFilterElement || !leaderboardFilterElement) return;
 
             const schools = schoolData.map(s => s.name).sort();
-            // --- UPDATED TAG LIST ---
             const coreTags = ['HASS', 'SCIENCE', 'MATH']; 
             const hassTags = ['HUMANITIES', 'SOCIAL SCIENCE']; 
             
@@ -483,7 +479,7 @@
 
             allCoursesFilterElement.innerHTML = allCoursesOptions.join('');
             
-            // --- Leaderboard Filter (Updated to include new HASS tags) ---
+            // --- Leaderboard Filter (Remains the same) ---
             let leaderboardOptions = [`<option value="">Filter All</option>`];
             
             leaderboardOptions.push(`<optgroup label="Core Tags">`);
@@ -546,7 +542,6 @@
                     let tags = [];
                     tags.push(hasPrereqs ? 'Has Prereqs' : 'No Prereqs');
                     
-                    // Add specific tags (HUMANITIES, SOCIAL SCIENCE, SCIENCE, MATH)
                     const specificTag = specificTagsMap.get(cleanSubj);
                     if (specificTag) {
                         tags.push(specificTag);
