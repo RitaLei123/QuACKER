@@ -799,22 +799,22 @@
             const docRef = doc(db, docPath, "all_course_reviews");
 
             try {
-                // Use setDoc with { merge: true } to create or update the document
-                // Use arrayUnion to add the new review to the 'reviews' array for the specific courseId
+                // --- STEP 1: Add the new review ---
+                // This call is correct. It creates the doc/course/reviews array if it doesn't exist.
                 await setDoc(docRef, {
                     [courseId]: {
                         reviews: arrayUnion(review)
                     }
-                }, { merge: true }); // { merge: true } is crucial!
+                }, { merge: true }); 
 
-                // --- MODIFICATION: Invalidate the cache ---
-                // Set the ai_summary to null to force re-generation
-                await setDoc(docRef, {
-                    [courseId]: {
-                        ai_summary: null
-                    }
-                }, { merge: true });
-                // --- END OF MODIFICATION ---
+                // --- STEP 2: Invalidate the cache (THE FIX) ---
+                // We must use updateDoc with dot notation to avoid deleting the reviews array.
+                // This tells Firebase to "reach into" the courseId object and set *only*
+                // the ai_summary field to null, leaving 'reviews' untouched.
+                await updateDoc(docRef, {
+                    [`${courseId}.ai_summary`]: null
+                });
+                // --- END OF FIX ---
 
                 console.log(`Review submitted for ${courseId}`);
                 closeReviewModal();
