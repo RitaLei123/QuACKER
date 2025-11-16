@@ -483,8 +483,18 @@
                 commentsList.innerHTML = sortedReviews.map(review => {
                     // Format the date
                     let reviewDate = '';
-                    if (review.createdAt) {
-                        const date = review.createdAt.toDate ? review.createdAt.toDate() : new Date(review.createdAt.seconds * 1000);
+                    let isEdited = false;
+                    let dateToFormat = review.createdAt;
+
+                    // If the review was updated, show the 'updatedAt' date
+                    if (review.updatedAt) {
+                        dateToFormat = review.updatedAt;
+                        isEdited = true;
+                    }
+
+                    if (dateToFormat) {
+                        // Handle both Firestore Timestamps and Date objects
+                        const date = dateToFormat.toDate ? dateToFormat.toDate() : new Date(dateToFormat.seconds * 1000);
                         reviewDate = date.toLocaleDateString();
                     }
 
@@ -494,7 +504,7 @@
                         <div class="flex justify-between items-center">
                             <span class="text-xs text-gray-400">
                                 Professor: <strong class="text-gray-300">${review.professor || 'N/A'}</strong>
-                                ${reviewDate ? `| <span class="italic">${reviewDate}</span>` : ''}
+                                ${reviewDate ? `| <span class="italic">${reviewDate} ${isEdited ? '(edited)' : ''}</span>` : ''}
                             </span>
                             <!-- Show buttons only if the review userId matches the current user's ID -->
                             ${review.userId === userId ? `
