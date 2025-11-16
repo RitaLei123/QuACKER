@@ -77,6 +77,7 @@ QuACKER takes the old-school idea of asking peers for course advice and moderniz
 **Best Use of Gemini API:**
 QuACKER combines retro student wisdom with modern AI. Using **Google Gemini**, we generated the frontend and Firebase integration for **anonymous course reviews and rankings**, turning scattered student opinions into a single, interactive platform. Gemini allowed us to build a fully functional application over the hackathon weekend, bringing the past into the present.
 
+**Best Use of AI:**
 ---
 
 ## License

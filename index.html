@@ -4,13 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QuACKER: The RPI Course Explorer</title>
-    <!-- Favicon Links -->
     <link rel="icon" type="image/x-icon" href="resources/favicon_io/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="resources/favicon_io/favicon-32x32.png">
     <link rel="apple-touch-icon" href="resources/favicon_io/apple-touch-icon.png">
-    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Set Inter font -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -65,7 +62,6 @@
 
         <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
-            <!-- Left Column: Leaderboard -->
             <div class="lg:col-span-1 bg-gray-800 p-6 rounded-xl shadow-2xl">
                 <div class="flex justify-between items-center border-b border-gray-700 pb-2 mb-4">
                     <h2 class="text-2xl font-semibold text-white">
@@ -78,12 +74,10 @@
                     </select>
                 </div>
                 <ol id="leaderboard-list" class="space-y-3">
-                    <!-- Leaderboard items will be injected here by JavaScript -->
                     <li class="text-gray-400 text-center">Loading leaderboards...</li>
                 </ol>
             </div>
 
-            <!-- Right Column: All Courses & Search -->
             <div class="lg:col-span-2 bg-gray-800 p-6 rounded-xl shadow-2xl">
                 <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2 text-white">
                     All Courses
@@ -95,17 +89,14 @@
                     class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg mb-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                 <div id="all-courses-list" class="max-h-[65vh] overflow-y-auto space-y-3 pr-2">
-                    <!-- Course list will be injected here by JavaScript -->
                     <p class="text-gray-400 text-center">Loading courses...</p>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- Review Modal -->
     <div id="review-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center p-4 invisible opacity-0 z-50">
         <div id="review-modal-content" class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl border border-gray-700 max-h-[90vh]">
-            <!-- Modal Header -->
             <div class="flex justify-between items-center p-5 border-b border-gray-700">
                 <div>
                     <h2 id="modal-course-name" class="text-2xl font-semibold text-white">Course Name</h2>
@@ -116,10 +107,8 @@
                 </button>
             </div>
 
-            <!-- Modal Body -->
             <div class="p-5 overflow-y-auto max-h-[calc(90vh-140px)] space-y-6">
                 
-                <!-- Course Info Section -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-200 mb-2">Course Information</h3>
                     <p id="modal-course-desc" class="text-sm text-gray-300 mb-3">Loading description...</p>
@@ -129,7 +118,6 @@
                     </p>
                 </div>
 
-                <!-- Student Feedback Section -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">Student Feedback (Averages)</h3>
                     <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
@@ -156,7 +144,6 @@
                     </div>
                 </div>
 
-                <!-- AI Summary Section -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">AI Summary (from reviews)</h3>
                     <div id="ai-summary-box" class="bg-gray-700/50 p-4 rounded-lg min-h-[100px] flex items-center justify-center">
@@ -167,13 +154,11 @@
                     <div id="ai-error-box" class="text-red-400 text-sm mt-2 hidden"></div>
                 </div>
 
-                <!-- Add Review Form -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">Add Your Anonymous Review</h3>
                     <form id="review-form" class="space-y-4">
                         <input type="hidden" id="modal-course-hidden-id">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <!-- Left Side of Form -->
                             <div class="space-y-4">
                                 <div>
                                     <label for="review-difficulty" class="block text-sm font-medium text-gray-300">Difficulty (1=Easy, 5=Hard)</label>
@@ -221,7 +206,6 @@
                                     </div>
                                 </div>
                             </div>
-                            <!-- Right Side of Form -->
                             <div class="space-y-4">
                                 <div>
                                     <label for="review-comment" class="block text-sm font-medium text-gray-300">Comments (Optional)</label>
@@ -235,23 +219,19 @@
                     </form>
                 </div>
 
-                <!-- Reviews List -->
                 <div id="reviews-list-section">
                     <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">All Reviews</h3>
                     <div id="reviews-list" class="space-y-3">
                         <p class="text-gray-400 text-sm italic">No reviews yet for this course.</p>
-                        <!-- Reviews will be injected here -->
-                    </div>
+                        </div>
                 </div>
 
             </div>
         </div>
     </div>
 
-    <!-- Leaderboard Modal (for large courses) -->
     <div id="leaderboard-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center p-4 invisible opacity-0 z-50">
         <div id="leaderboard-modal-content" class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl border border-gray-700 max-h-[90vh]">
-            <!-- Modal Header -->
             <div class="flex justify-between items-center p-5 border-b border-gray-700">
                 <div>
                     <h2 id="leaderboard-modal-course-name" class="text-2xl font-semibold text-white">Course Name</h2>
@@ -262,9 +242,7 @@
                 </button>
             </div>
 
-            <!-- Modal Body (mirrors review modal) -->
             <div class="p-5 overflow-y-auto max-h-[calc(90vh-140px)] space-y-6">
-                <!-- Course Info Section -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-200 mb-2">Course Information</h3>
                     <p id="leaderboard-modal-course-desc" class="text-sm text-gray-300 mb-3">Loading description...</p>
@@ -274,7 +252,6 @@
                     </p>
                 </div>
 
-                <!-- Student Feedback Section -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">Student Feedback (Averages)</h3>
                     <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
@@ -301,7 +278,6 @@
                     </div>
                 </div>
 
-                 <!-- AI Summary Section -->
                  <div>
                     <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">AI Summary (from reviews)</h3>
                     <div id="leaderboard-ai-summary-box" class="bg-gray-700/50 p-4 rounded-lg min-h-[100px] flex items-center justify-center">
@@ -312,7 +288,6 @@
                     <div id="leaderboard-ai-error-box" class="text-red-400 text-sm mt-2 hidden"></div>
                 </div>
 
-                <!-- "Add Review" Button -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">Add Your Review</h3>
                     <p class="text-sm text-gray-300 mb-3">To add a review, please find this course in the "All Courses" list.</p>
@@ -321,13 +296,11 @@
                     </button>
                 </div>
 
-                <!-- Reviews List -->
                 <div id="leaderboard-reviews-list-section">
                     <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">All Reviews</h3>
                     <div id="leaderboard-reviews-list" class="space-y-3">
                         <p class="text-gray-400 text-sm italic">No reviews yet for this course.</p>
-                        <!-- Reviews will be injected here -->
-                    </div>
+                        </div>
                 </div>
             </div>
         </div>
@@ -444,6 +417,7 @@
                         avgWorkload: 0.0,
                         avgAttendance: 0,
                         avgGpa: -1,
+                        ai_summary: null, // Add field for cached summary
                     };
                 });
                 
@@ -526,6 +500,9 @@
                     course.avgWorkload = totalWorkload / course.reviewCount;
                     course.avgAttendance = (totalAttendance / course.reviewCount) * 100;
                     course.avgGpa = gpaCount > 0 ? (totalGpa / gpaCount) : -1;
+
+                    // --- MODIFICATION: Load the cached summary ---
+                    course.ai_summary = reviewData.ai_summary || null;
                 
                 } else {
                     // Reset if no reviews exist
@@ -536,6 +513,9 @@
                     course.avgWorkload = 0.0;
                     course.avgAttendance = 0;
                     course.avgGpa = -1;
+
+                    // --- MODIFICATION: Reset cached summary ---
+                    course.ai_summary = null;
                 }
             });
 
@@ -578,7 +558,6 @@
                     <div class="flex-grow pr-4 overflow-hidden">
                         <span class="font-semibold text-white block truncate">${course.name}</span>
                         <span class="text-sm text-gray-400">${course.id} (${course.reviewCount} review${course.reviewCount === 1 ? '' : 's'})</span>
-                        <!-- Average Scores -->
                         <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-300">
                             <span>Diff: <strong class="text-green-400">${course.avgDifficulty.toFixed(1)}</strong></span>
                             <span>Useful: <strong class="text-blue-400">${course.avgUsefulness.toFixed(1)}</strong></span>
@@ -707,6 +686,9 @@
             modal.classList.add('opacity-0');
             modalContent.style.transform = 'scale(0.95)';
             setTimeout(() => modal.classList.add('invisible'), 250);
+            
+            // Clear hidden ID on close
+            document.getElementById('modal-course-hidden-id').value = "";
         }
         
         /**
@@ -754,6 +736,9 @@
             modal.classList.add('opacity-0');
             modalContent.style.transform = 'scale(0.95)';
             setTimeout(() => modal.classList.add('invisible'), 250);
+
+            // Clear dataset ID on close
+            document.getElementById('go-to-review-btn').dataset.id = "";
         }
 
         /**
@@ -822,6 +807,15 @@
                     }
                 }, { merge: true }); // { merge: true } is crucial!
 
+                // --- MODIFICATION: Invalidate the cache ---
+                // Set the ai_summary to null to force re-generation
+                await setDoc(docRef, {
+                    [courseId]: {
+                        ai_summary: null
+                    }
+                }, { merge: true });
+                // --- END OF MODIFICATION ---
+
                 console.log(`Review submitted for ${courseId}`);
                 closeReviewModal();
 
@@ -835,16 +829,34 @@
 
         /**
          * Resets the AI summary box to its initial state.
+         * NOW CHECKS FOR CACHED SUMMARY.
          */
         function resetAISummary(textId, loaderId, errorId) {
             const textElement = document.getElementById(textId);
             const loaderElement = document.getElementById(loaderId);
             const errorElement = document.getElementById(errorId);
             
-            const courseId = document.getElementById('modal-course-hidden-id').value || document.getElementById('go-to-review-btn').dataset.id;
+            // Get courseId from either modal
+            const reviewModalId = document.getElementById('modal-course-hidden-id').value;
+            const leaderboardModalId = document.getElementById('go-to-review-btn').dataset.id;
+            const courseId = reviewModalId || leaderboardModalId; // Use the one that's currently active
+
             const course = allCourses.find(c => c.id === courseId);
             const hasReviews = course && course.reviews && course.reviews.length > 0;
 
+            // --- START OF MODIFICATION ---
+            if (course && course.ai_summary) {
+                // If we have a cached summary, show it immediately
+                textElement.textContent = course.ai_summary;
+                textElement.classList.remove("italic");
+                textElement.classList.remove('hidden');
+                loaderElement.classList.add('hidden');
+                errorElement.classList.add('hidden');
+                return; // We're done
+            }
+            // --- END OF MODIFICATION ---
+
+            // If no cached summary, show the default placeholder text
             if (hasReviews) {
                 textElement.textContent = "Click 'Generate Summary' to get an AI summary of all reviews.";
                 textElement.classList.add("italic");
@@ -860,19 +872,31 @@
 
         /**
          * Calls the Gemini API to generate a course summary.
+         * Now includes caching logic.
          */
         async function generateSummary(courseId, textId, loaderId, errorId) {
             const textElement = document.getElementById(textId);
             const loaderElement = document.getElementById(loaderId);
             const errorElement = document.getElementById(errorId);
 
-            if (!apiKey || apiKey === "PASTE_YOUR_API_KEY_FROM_AI_STUDIO_HERE") {
+            if (!apiKey || apiKey === "AIzaSyAXz4685osrzC6tvLSyLxwoa_D3GQLUgAo") {
                 errorElement.textContent = "AI Summary is not configured. (Missing API Key)";
                 errorElement.classList.remove("hidden");
                 return;
             }
 
             const course = allCourses.find(c => c.id === courseId);
+
+            // --- START OF MODIFICATION (Caching Check) ---
+            // Check if summary is already cached
+            if (course.ai_summary) {
+                console.log("Displaying cached summary.");
+                textElement.textContent = course.ai_summary;
+                textElement.classList.remove("italic");
+                return; // Stop here, no API call needed
+            }
+            // --- END OF MODIFICATION ---
+
             const comments = course.reviews
                 .map(r => r.comment)
                 .filter(comment => comment && comment.trim() !== ''); // Get only non-empty comments
@@ -915,6 +939,19 @@
                 if (summary) {
                     textElement.textContent = summary;
                     textElement.classList.remove('italic');
+
+                    // --- START OF MODIFICATION (Save to Firebase) ---
+                    console.log(`Saving new summary for ${courseId} to Firebase...`);
+                    const docPath = `artifacts/${appId}/public/data/reviews`;
+                    const docRef = doc(db, docPath, "all_course_reviews");
+                    
+                    await setDoc(docRef, {
+                        [courseId]: {
+                            ai_summary: summary
+                        }
+                    }, { merge: true }); // Merge: true is critical!
+                    // --- END OF MODIFICATION ---
+
                 } else {
                     throw new Error("Invalid response structure from API.");
                 }
