@@ -159,10 +159,12 @@
                 <!-- AI Summary Section (Pros & Cons) -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">AI Summary (from reviews)</h3>
-                    <div id="ai-summary-box" class="bg-gray-700/50 p-4 rounded-lg">
+                    <!-- HTML FIX: Added min-h-[100px] and new elements -->
+                    <div id="ai-summary-box" class="bg-gray-700/50 p-4 rounded-lg min-h-[100px]">
                         <div id="ai-summary-loader" class="loader hidden mx-auto"></div>
                         <div id="ai-error-box" class="text-red-400 text-sm hidden"></div>
-                        <!-- Pros and Cons will be rendered here -->
+                        <p id="ai-summary-placeholder" class="text-gray-400 italic text-sm text-center hidden"></p>
+                        <div id="ai-summary-content"></div> <!-- Pros/Cons rendered here -->
                     </div>
                 </div>
 
@@ -303,10 +305,12 @@
                  <!-- AI Summary Section (Pros & Cons) -->
                  <div>
                     <h3 class="text-lg font-semibold text-gray-200 mb-3 pt-4 border-t border-gray-700">AI Summary (from reviews)</h3>
-                    <div id="leaderboard-ai-summary-box" class="bg-gray-700/50 p-4 rounded-lg">
+                    <!-- HTML FIX: Added min-h-[100px] and new elements -->
+                    <div id="leaderboard-ai-summary-box" class="bg-gray-700/50 p-4 rounded-lg min-h-[100px]">
                         <div id="leaderboard-ai-summary-loader" class="loader hidden mx-auto"></div>
                         <div id="leaderboard-ai-error-box" class="text-red-400 text-sm hidden"></div>
-                        <!-- Pros and Cons will be rendered here -->
+                        <p id="leaderboard-ai-summary-placeholder" class="text-gray-400 italic text-sm text-center hidden"></p>
+                        <div id="leaderboard-ai-summary-content"></div> <!-- Pros/Cons rendered here -->
                     </div>
                 </div>
 
@@ -877,16 +881,24 @@
         }
 
         /**
-         * --- FEATURE 3: Renders the Pros & Cons list ---
+         * --- FEATURE 3 (JS FIX): Renders the Pros & Cons list ---
          * Helper function to build and inject the Pros/Cons HTML.
          */
-        function renderProsCons(summaryObject, containerId, loaderId, errorId) {
-            const containerElement = document.getElementById(containerId);
+        function renderProsCons(summaryObject, contentId, placeholderId, loaderId, errorId) {
+            const contentElement = document.getElementById(contentId);
+            const placeholderElement = document.getElementById(placeholderId);
             const loaderElement = document.getElementById(loaderId);
             const errorElement = document.getElementById(errorId);
             
+            // Hide all utility elements
+            loaderElement.classList.add('hidden');
+            errorElement.classList.add('hidden');
+            placeholderElement.classList.add('hidden');
+            
             if (!summaryObject || !summaryObject.pros || !summaryObject.cons) {
-                containerElement.innerHTML = `<p class="text-gray-400 italic text-sm">Could not parse AI summary.</p>`;
+                placeholderElement.textContent = "Could not parse AI summary.";
+                placeholderElement.classList.remove('hidden');
+                contentElement.innerHTML = ''; // Clear content
                 return;
             }
 
@@ -901,7 +913,7 @@
                 : '<li class="text-gray-400 italic text-sm">No specific cons mentioned.</li>';
 
             // Set the final HTML
-            containerElement.innerHTML = `
+            contentElement.innerHTML = `
                 <div class="space-y-3">
                     <div>
                         <h4 class="font-semibold text-gray-200 mb-1">Pros</h4>
@@ -918,53 +930,68 @@
                 </div>
             `;
             
-            loaderElement.classList.add('hidden');
-            errorElement.classList.add('hidden');
+            contentElement.classList.remove('hidden');
         }
 
 
         /**
+         * --- JS FIX: Updated resetAISummary to be safer ---
          * Resets the AI summary box to its initial state.
          * NOW CHECKS FOR CACHE AND *AUTOMATICALLY* GENERATES IF MISSING.
          */
         function resetAISummary(course, containerId, loaderId, errorId) {
-            const containerElement = document.getElementById(containerId);
+            // --- NEW: Get IDs for the new content/placeholder elements ---
+            const isReviewModal = (containerId === 'ai-summary-box');
+            const contentId = isReviewModal ? 'ai-summary-content' : 'leaderboard-ai-summary-content';
+            const placeholderId = isReviewModal ? 'ai-summary-placeholder' : 'leaderboard-ai-summary-placeholder';
+
+            const contentElement = document.getElementById(contentId);
+            const placeholderElement = document.getElementById(placeholderId);
             const loaderElement = document.getElementById(loaderId);
             const errorElement = document.getElementById(errorId);
             
             const hasReviews = course && course.reviews && course.reviews.length > 0;
 
-            // --- START OF MODIFICATION ---
+            // --- START OF MODIFICATION (Bug Fix) ---
+            
+            // Always start by clearing content and hiding all elements
+            contentElement.innerHTML = '';
+            contentElement.classList.add('hidden');
+            placeholderElement.classList.add('hidden');
+            loaderElement.classList.add('hidden');
+            errorElement.classList.add('hidden');
+
             if (course && course.ai_summary) {
                 // Case 1: We have a cached summary object. Render it.
-                renderProsCons(course.ai_summary, containerId, loaderId, errorId);
+                renderProsCons(course.ai_summary, contentId, placeholderId, loaderId, errorId);
             
             } else if (hasReviews) {
                 // Case 2: No cached summary, BUT we have reviews.
                 // Auto-generate it for the user.
-                containerElement.innerHTML = ''; // Clear container
                 loaderElement.classList.remove('hidden'); // Show loader
-                errorElement.classList.add('hidden');
                 
                 // Call the function to do the work
-                generateSummary(course, containerId, loaderId, errorId);
+                generateSummary(course, contentId, placeholderId, loaderId, errorId);
 
             } else {
                 // Case 3: No reviews, no summary. Show placeholder.
-                containerElement.innerHTML = `<p class="text-gray-400 italic text-sm text-center">No reviews yet. Submit one to get an AI summary!</p>`;
-                loaderElement.classList.add('hidden');
-                errorElement.classList.add('hidden');
+                // This is the fix: We now update the placeholder's text
+                // instead of destroying the other elements.
+                placeholderElement.textContent = "No reviews yet. Submit one to get an AI summary!";
+                placeholderElement.classList.remove('hidden');
             }
             // --- END OF MODIFICATION ---
         }
 
         /**
+         * --- JS FIX: Updated generateSummary to pass new IDs ---
          * --- FEATURE 3: Calls the Gemini API to generate Pros & Cons JSON ---
          * Now includes structured JSON caching logic.
          */
-        async function generateSummary(course, containerId, loaderId, errorId) {
+        async function generateSummary(course, contentId, placeholderId, loaderId, errorId) {
             const loaderElement = document.getElementById(loaderId);
             const errorElement = document.getElementById(errorId);
+            const placeholderElement = document.getElementById(placeholderId);
 
             if (!apiKey || apiKey === "PASTE_YOUR_API_KEY_FROM_AI_STUDIO_HERE") {
                 errorElement.textContent = "AI Summary is not configured. (Missing API Key)";
@@ -976,7 +1003,7 @@
             // Check if summary is already cached (double-check)
             if (course.ai_summary) {
                 console.log("Displaying cached summary.");
-                renderProsCons(course.ai_summary, containerId, loaderId, errorId);
+                renderProsCons(course.ai_summary, contentId, placeholderId, loaderId, errorId);
                 return;
             }
 
@@ -985,8 +1012,8 @@
                 .filter(comment => comment && comment.trim() !== ''); // Get only non-empty comments
 
             if (comments.length === 0) {
-                const containerElement = document.getElementById(containerId);
-                containerElement.innerHTML = `<p class="text-gray-400 italic text-sm text-center">Not enough comments to generate a summary.</p>`;
+                placeholderElement.textContent = "Not enough comments to generate a summary.";
+                placeholderElement.classList.remove('hidden');
                 loaderElement.classList.add('hidden');
                 return;
             }
@@ -1036,7 +1063,7 @@
                     const summaryObject = JSON.parse(summaryText);
                     
                     // Render the new summary
-                    renderProsCons(summaryObject, containerId, loaderId, errorId);
+                    renderProsCons(summaryObject, contentId, placeholderId, loaderId, errorId);
 
                     // --- Save the JSON OBJECT to Firebase ---
                     console.log(`Saving new summary for ${course.id} to Firebase...`);
