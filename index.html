@@ -575,18 +575,43 @@
                     body: JSON.stringify(payload)
                 });
 
+                // --- NEW ERROR HANDLING ---
+                // First, check for a top-level error from the API
+                if (result.error) {
+                    console.error(`Gemini API Error: ${result.error.message}`, JSON.stringify(result.error, null, 2));
+                    return `AI summary failed: ${result.error.message}.`;
+                }
+
                 const candidate = result.candidates?.[0];
                 if (candidate && candidate.content?.parts?.[0]?.text) {
-                    // THE FIX: Ensure we return the text string itself
+                    // Success case
                     return candidate.content.parts[0].text;
                 } else {
-                    // This might happen if the API returns a response with no text
-                    console.error("Invalid response structure from Gemini API:", result);
-                    // Check for a block reason
-                    if (candidate && candidate.finishReason === 'SAFETY') {
-                        return "AI summary generation was blocked for safety reasons.";
+                    // Handle various non-success states
+                    let reason = "Unknown response structure";
+
+                    // Check for a block reason on the candidate
+                    if (result.candidates && result.candidates.length > 0 && result.candidates[0].finishReason) {
+                        reason = `Finish Reason: ${result.candidates[0].finishReason}`;
                     }
-                    return null;
+                    // Check for a *prompt* block
+                    else if (result.promptFeedback && result.promptFeedback.blockReason) {
+                        reason = `Prompt Block: ${result.promptFeedback.blockReason}`;
+                    }
+
+                    // Log the full response to debug
+                    let fullResponse = "[Could not stringify response]";
+                    try {
+                        fullResponse = JSON.stringify(result, null, 2);
+                    } catch (e) {}
+
+                    console.error(`Invalid response structure from Gemini API. Reason: ${reason}. Full response:`, fullResponse);
+                    
+                    if (reason.includes("Finish Reason") || reason.includes("Prompt Block")) {
+                        return `AI summary generation was blocked: ${reason}.`;
+                    }
+                    
+                    return null; // Return null on unknown error
                 }
             } catch (error) {
                 console.error("Error calling Gemini API:", error);
@@ -603,14 +628,19 @@
             activeSummaryGenerations.add(courseId);
 
             try {
+                // THE FIX: Filter for valid strings only, excluding null, undefined, or [object Object]
                 const comments = reviews
                     .map(r => r.comment)
-                    .filter(c => c && c.trim() !== ''); // Get all non-empty comments
+                    .filter(c => c && typeof c === 'string' && c.trim() !== ''); // Get all non-empty, valid strings
 
                 if (comments.length === 0) {
-                    console.log(`Skipping summary for ${courseId}, no text comments.`);
+                    console.log(`Skipping summary for ${courseId}, no valid text comments.`);
+                    activeSummaryGenerations.delete(courseId); // Make sure to release the lock
                     return;
                 }
+                
+                // NEW: Log the comments being sent
+                console.log(`Sending ${comments.length} comments to Gemini for ${courseId}:`, comments);
 
                 const summary = await getAiSummary(courseName, comments);
                 if (summary) {
