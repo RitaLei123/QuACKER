@@ -87,6 +87,7 @@
                                 <option value="usefulness">Most Useful</option>
                                 <option value="difficulty">Easiest</option>
                                 <option value="workload">Lightest Workload</option>
+                                <option value="most_reviews">Most Reviews</option>
                             </select>
                         </div>
                         
@@ -1104,6 +1105,8 @@
                             return a.avgDifficulty - b.avgDifficulty; // Lower is better
                         case 'workload':
                             return a.avgWorkload - b.avgWorkload; // Lower is better
+                        case 'most_reviews':
+                            return b.reviewCount - a.reviewCount; // Higher is better
                         case 'usefulness':
                         default:
                             return b.avgUsefulness - a.avgUsefulness; // Higher is better
@@ -1126,6 +1129,10 @@
                     case 'workload':
                         score = course.avgWorkload.toFixed(1);
                         scoreColor = 'text-yellow-400';
+                        break;
+                    case 'most_reviews':
+                        score = course.reviewCount;
+                        scoreColor = 'text-gray-300';
                         break;
                     case 'usefulness':
                     default:
